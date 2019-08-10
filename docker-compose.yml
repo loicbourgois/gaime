@@ -8,3 +8,11 @@ services: # Here we define our service(s)
     ports:
       - '4200:4200' # Port mapping
     command: ng serve --host 0.0.0.0 --port 4200
+  server-service: # The name of the service
+    container_name: server_container  # Container name
+    build: ./server # Location of our Dockerfile
+    volumes: # Volume binding
+      - './server:/usr/src/server'
+    ports:
+      - '8000:8000' # Port mapping
+    command: server
