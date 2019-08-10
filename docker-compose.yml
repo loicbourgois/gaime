@@ -1,0 +1,10 @@
+version: '3.5' # We use version 3.5 syntax
+services: # Here we define our service(s)
+  client-service: # The name of the service
+    container_name: client_container  # Container name
+    build: ./client # Location of our Dockerfile
+    volumes: # Volume binding
+      - './client:/usr/src/client'
+    ports:
+      - '4200:4200' # Port mapping
+    command: ng serve --host 0.0.0.0 --port 4200
