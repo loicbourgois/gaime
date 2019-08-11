@@ -23,7 +23,7 @@ export class HomeComponent implements OnInit {
   getGames() {
     this.gameService.getGames()
       .subscribe(data => {
-        this.games = data.games;
+        this.games = data['games'];
       });
   }
 }

@@ -19,6 +19,20 @@ export class TrainComponent implements OnInit {
 
   ngOnInit() {
     this.getGame();
+    
+    // Create WebSocket connection.
+    const socket = new WebSocket('ws://0.0.0.0:8080');
+
+    // Connection opened
+    socket.addEventListener('open', function (event) {
+        socket.send('loginjohn');
+    });
+
+    // Listen for messages
+    socket.addEventListener('message', function (event) {
+        console.log('Received: ', event.data);
+    });
+    
   }
 
   getGame(): void {
