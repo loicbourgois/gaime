@@ -9,6 +9,8 @@ import { GameService } from '../game/game.service';
 })
 export class HomeComponent implements OnInit {
 
+  games;
+
   constructor(
     private homeService: HomeService,
     private gameService: GameService
@@ -20,8 +22,8 @@ export class HomeComponent implements OnInit {
 
   getGames() {
     this.gameService.getGames()
-      .subscribe((data) => {
-        console.log(data);
+      .subscribe(data => {
+        this.games = data.games;
       });
   }
 }

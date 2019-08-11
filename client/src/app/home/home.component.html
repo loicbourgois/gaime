@@ -1,1 +1,8 @@
-<p>home works!</p>
+<h1>Gaime</h1>
+<h1>Learning AI through gaming</h1>
+
+<div id="games">
+    <li *ngFor="let game of games">
+        <a routerLink="/game/{{game.game_id}}">{{game.name}}</a>
+    </li>
+</div>
