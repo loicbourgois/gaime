@@ -9,7 +9,13 @@ edition = "2018"
 [dependencies]
 rocket = "0.4.2"
 rocket_cors = "0.5.0-beta-2"
-rocket_contrib = "0.4.2"
-serde = "1.0"
-serde_derive = "1.0"
-syn = "0.15.43"
+serde = "1"
+serde_derive = "1"
+postgres = "0.15"
+jsonwebtoken = "5"
+bcrypt = "0.4"
+
+[dependencies.rocket_contrib]
+version = "0.4.2"
+default-features = false
+features = ["postgres_pool", "json"]

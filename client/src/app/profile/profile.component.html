@@ -1,0 +1,24 @@
+<p>Username: {{user.username}}</p>
+<p>Email: {{user.email}}</p>
+<div>
+    <label>New email</label><input type="email" #new_email/>
+</div>
+<button
+    (click)="changeEmail(
+        new_email.value
+    )">Change email</button>
+<div>
+    <label>Password</label><input type="password" #profile_password_1/>
+</div>
+<div>
+    <label>Password</label><input type="password" #profile_password_1/>
+</div>
+<div>
+    <label>New password</label><input type="password" #profile_new_password/>
+</div>
+<button
+    (click)="changePassword(
+        profile_password_1.value,
+        profile_password_2.value,
+        profile_new_password.value
+    )">Change password</button>

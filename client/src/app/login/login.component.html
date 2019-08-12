@@ -1,0 +1,13 @@
+<h1>Log In</h1>
+<div>
+    <label>Username</label><input type="text" id="log-in-username" #log_in_username/>
+</div>
+<div>
+    <label>Password</label><input type="password" id="log-in-password" #log_in_password/>
+</div>
+<button
+    id="log-in-button"
+    (click)="login(
+        log_in_username.value,
+        log_in_password.value
+    )">Log in</button>

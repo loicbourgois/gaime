@@ -1,0 +1,17 @@
+<h1>Sign Up</h1>
+<div>
+    <label>Username</label><input type="text" id="sign-up-username" #sign_up_username/>
+</div>
+<div>
+    <label>Password</label><input type="password" id="sign-up-password" #sign_up_password/>
+</div>
+<div>
+    <label>Email</label><input type="email" id="sign-up-email" #sign_up_email/>
+</div>
+<button
+    id="sign-up-button"
+    (click)="signup(
+        sign_up_username.value,
+        sign_up_password.value,
+        sign_up_email.value
+    )">Create account</button>

@@ -5,21 +5,134 @@
 #[macro_use] extern crate rocket;
 #[macro_use] extern crate rocket_contrib;
 #[macro_use] extern crate serde_derive;
+extern crate jsonwebtoken as jwt;
+extern crate bcrypt;
 
 
 use rocket::http::Method;
 use rocket::{get, routes};
 use rocket_cors::{AllowedHeaders, AllowedOrigins, Error};
 use rocket_contrib::json::{Json, JsonValue};
+use rocket_contrib::databases::postgres;
+use jwt::{encode, decode, Header, Validation};
+use bcrypt::{DEFAULT_COST, hash, verify};
+use rocket::Outcome;
+use rocket::http::Status;
+use rocket::request::{self, Request, FromRequest};
 
 
 type GameId = String;
 
 
 #[derive(Serialize, Deserialize)]
+struct NewEmail {
+    new_email: String
+}
+
+
+#[derive(Serialize, Deserialize)]
 struct Game {
     game_id: GameId,
     name: String
+}
+
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    username: String,
+    exp: usize
+}
+
+
+#[database("gaime")]
+struct DatabaseConnection(postgres::Connection);
+
+
+#[derive(Serialize, Deserialize)]
+struct User {
+    username: String,
+    email: String
+}
+
+
+#[derive(Serialize, Deserialize)]
+struct Signup {
+    username: String,
+    password: String,
+    email: String
+}
+
+
+#[derive(Serialize, Deserialize)]
+struct Login {
+    username: String,
+    password: String
+}
+
+
+
+#[derive(Debug)]
+enum JwtError {
+    NoJwt
+}
+
+
+fn user_from_jwt_token(database_connection: &DatabaseConnection, jwt_token: &str) -> Result<Option<User>, postgres::Error> {
+    let token_data = decode::<Claims>(&jwt_token, b"secret", &Validation::default());
+    let token_username = token_data.unwrap().claims.username;
+    match database_connection.query(
+        "Select username, email From users Where username=$1;",
+        &[&token_username]
+    ) {
+        Ok(results) => {
+            match results.len() {
+                1 => {
+                    Ok(Some(User {
+                        username: results.get(0).get(0),
+                        email: results.get(0).get(1)
+                    }))
+                },
+                _ => {
+                    Ok(None)
+                }
+            }
+        },
+        Err(error) => {
+            Err(error)
+        }
+    }
+}
+
+
+impl<'a, 'r> FromRequest<'a, 'r> for User {
+    type Error = JwtError;
+
+    fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+        let database_connection = request.guard::<DatabaseConnection>().unwrap();
+        let authorization_header = request.headers().get_one("Authorization").unwrap();
+        let jwt_token = authorization_header.replace("Bearer ", "");
+        match user_from_jwt_token(&database_connection, &jwt_token) {
+            Ok(user_option) => {
+                match user_option {
+                    Some(user) => {
+                        Outcome::Success(user)
+                    },
+                    None => {
+                        Outcome::Failure((Status::BadRequest, JwtError::NoJwt))
+                    }
+                }
+            },
+            Err(_) => {
+                Outcome::Failure((Status::BadRequest, JwtError::NoJwt))
+            }
+        }
+    }
+}
+
+
+#[get("/self")]
+fn userself(user: User) -> Json<User> {
+    Json(user)
 }
 
 
@@ -56,6 +169,129 @@ fn game(game_id: GameId) -> Option<Json<Game>> {
 }
 
 
+#[post("/login", data = "<login>")]
+fn login(database_connection: DatabaseConnection, login: Json<Login>) -> JsonValue {
+    let key = "secret";
+    let exp = 10000000000;
+    let claims = Claims {
+        username: login.username.to_owned(),
+        exp: exp
+    };
+    match database_connection.query(
+        "Select username, email, hash From users Where username=$1;",
+        &[&login.username]
+    ) {
+        Ok(results) => {
+            match results.len() {
+                0 => {
+                    json!({
+                        "status": "error",
+                        "error": format!("User {} does not exist", login.username)
+                    })
+                },
+                1 => {
+                    let user_hash: String = results.get(0).get(2);
+                    match verify(&login.password, &user_hash) {
+                        Ok(is_valid) => {
+                            match is_valid {
+                                true => {
+                                    match encode(&Header::default(), &claims, key.as_ref()) {
+                                        Ok(jwt_token) => {
+                                            json!({
+                                                "status": "ok",
+                                                "jwt_token": jwt_token
+                                            })
+                                        },
+                                        Err(error) => {
+                                            json!({
+                                                "status": "error",
+                                                "error": error.to_string()
+                                            })
+                                        }
+                                    }
+                                },
+                                false => {
+                                    json!({
+                                        "status": "error",
+                                        "error": "Invalid username/password pair"
+                                    })
+                                }
+                            }
+                        },
+                        Err(error) => {
+                            json!({
+                                "status": "error",
+                                "error": error.to_string()
+                            })
+                        }
+                    }
+                },
+                _ => {
+                    json!({
+                        "status": "error",
+                        "error": format!("Found more than 1 user with username {}", login.username)
+                    })
+                }
+            }
+        },
+        Err(error) => {
+            json!({
+                "status": "error",
+                "error": error.to_string()
+            })
+        }
+    }
+}
+
+
+#[post("/signup", data = "<signup>")]
+fn signup(database_connection: DatabaseConnection, signup: Json<Signup>) -> JsonValue {
+    match hash(&signup.password, DEFAULT_COST) {
+        Ok(hash) => {
+            match database_connection.execute(
+                "INSERT INTO users (username, email, hash) VALUES ($1, $2, $3);",
+                &[&signup.username, &signup.email, &hash]
+            ) {
+                Ok(_) => {
+                    json!({ "status": "ok" })
+                },
+                Err(error) => {
+                    json!({
+                        "status": "error",
+                        "error": error.to_string()
+                    })
+                }
+            }
+        },
+        Err(error) => {
+            json!({
+                "status": "error",
+                "error": error.to_string()
+            })
+        }
+    }
+}
+
+
+#[post("/changeemail", data = "<new_email>")]
+fn changeemail(database_connection: DatabaseConnection, new_email: Json<NewEmail>, user: User) -> JsonValue {
+    match database_connection.execute(
+        "UPDATE users SET email=$1 WHERE username=$2;",
+        &[&new_email.new_email, &user.username]
+    ) {
+        Ok(_) => {
+            json!({ "status": "ok" })
+        },
+        Err(error) => {
+            json!({
+                "status": "error",
+                "error": error.to_string()
+            })
+        }
+    }
+}
+
+
 #[catch(404)]
 fn not_found() -> JsonValue {
     json!({
@@ -68,19 +304,26 @@ fn not_found() -> JsonValue {
 fn main() -> Result<(), Error> {
     let allowed_origins = AllowedOrigins::some_exact(&["http://localhost:4200"]);
 
-    // You can also deserialize this
     let cors = rocket_cors::CorsOptions {
         allowed_origins,
-        allowed_methods: vec![Method::Get].into_iter().map(From::from).collect(),
-        allowed_headers: AllowedHeaders::some(&["Authorization", "Accept"]),
+        allowed_methods: vec![Method::Get, Method::Post].into_iter().map(From::from).collect(),
+        allowed_headers: AllowedHeaders::some(&["Authorization", "Accept", "Content-Type"]),
         allow_credentials: true,
         ..Default::default()
     }
     .to_cors()?;
 
     rocket::ignite()
-        .mount("/", routes![games, game])
+        .mount("/", routes![
+            games,
+            game,
+            signup,
+            login,
+            userself,
+            changeemail
+        ])
         .attach(cors)
+        .attach(DatabaseConnection::fairing())
         .launch();
 
     Ok(())

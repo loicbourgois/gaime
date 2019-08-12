@@ -1,0 +1,2 @@
+[global.databases.gaime]
+url = "postgres://gaimemaster:password@database:5432/gaime"
