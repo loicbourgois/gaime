@@ -1,0 +1,32 @@
+<h1>{{game.name}}</h1>
+<div>
+    <button disabled>Play</button>
+    <button routerLink="/game/{{game.string_id}}/train">Train</button>
+    <button routerLink="/game/{{game.string_id}}">Watch</button>
+</div>
+
+<div class="main">
+    <div>
+        <h2>Canvas</h2>
+        <div>
+            <canvas width="1000" height="1000"></canvas>
+        </div>
+        <div>
+            <button>Find game</button>
+            <button disabled>Quit</button>
+        </div>
+        <textarea class="log"></textarea>
+    </div>
+    <div class="initialisation">
+        <h2>Initialisation</h2>
+        <textarea></textarea>
+    </div>
+    <div class="render-loop">
+        <h2>Render loop</h2>
+        <textarea></textarea>
+    </div>
+    <div class="game-loop">
+        <h2>Game loop</h2>
+        <textarea></textarea>
+    </div>
+</div>

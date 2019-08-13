@@ -6,6 +6,7 @@ import { TrainComponent } from './train/train.component';
 import { SignupComponent } from './signup/signup.component';
 import { LoginComponent } from './login/login.component';
 import { ProfileComponent } from './profile/profile.component';
+import { PlayComponent } from './play/play.component';
 
 
 const routes: Routes = [
@@ -16,6 +17,7 @@ const routes: Routes = [
     { path: 'signup', component: SignupComponent },
     { path: 'login', component: LoginComponent },
     { path: 'profile', component: ProfileComponent },
+    { path: 'game/:gameId/play', component: PlayComponent },
     { path: '*', redirectTo: '/home', pathMatch: 'full' },
 ];
 

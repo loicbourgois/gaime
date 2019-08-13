@@ -1,0 +1,43 @@
+:host {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.main {
+    display: flex;
+    flex-direction: row;
+    flex-grow: 1;
+}
+
+.main > div {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    width: 0;
+}
+
+canvas {
+    max-width: 100%;
+}
+
+.main > * > textarea {
+    flex-grow: 1;
+    border: none;
+}
+
+.initialisation > textarea {
+    background: #fee;
+}
+
+.render-loop > textarea {
+    background: #efe;
+}
+
+.game-loop > textarea {
+    background: #eef;
+}
+
+.log {
+    background: #eee;
+}
