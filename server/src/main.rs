@@ -25,6 +25,14 @@ type GameId = String;
 
 
 #[derive(Serialize, Deserialize)]
+struct NewPassword {
+    password_1: String,
+    password_2: String,
+    new_password: String
+}
+
+
+#[derive(Serialize, Deserialize)]
 struct NewEmail {
     new_email: String
 }
@@ -292,6 +300,111 @@ fn changeemail(database_connection: DatabaseConnection, new_email: Json<NewEmail
 }
 
 
+#[post("/changepassword", data = "<new_password>")]
+fn changepassword(database_connection: DatabaseConnection, new_password: Json<NewPassword>, user: User) -> JsonValue {
+    let key = "secret";
+    let exp = 10000000000;
+    let claims = Claims {
+        username: user.username.to_owned(),
+        exp: exp
+    };
+    if new_password.password_1 == new_password.password_2 {
+        match database_connection.query(
+            "Select username, email, hash From users Where username=$1;",
+            &[&user.username]
+        ) {
+            Ok(results) => {
+                match results.len() {
+                    0 => {
+                        json!({
+                            "status": "error",
+                            "error": format!("User {} does not exist", user.username)
+                        })
+                    },
+                    1 => {
+                        let user_hash: String = results.get(0).get(2);
+                        match verify(&new_password.password_1, &user_hash) {
+                            Ok(is_valid) => {
+                                match is_valid {
+                                    true => {
+                                        match hash(&new_password.new_password, DEFAULT_COST) {
+                                            Ok(hash) => {
+                                                match database_connection.execute(
+                                                    "UPDATE users SET hash=$1 WHERE username=$2;",
+                                                    &[&hash, &user.username]
+                                                ) {
+                                                    Ok(_) => {
+                                                        match encode(&Header::default(), &claims, key.as_ref()) {
+                                                            Ok(jwt_token) => {
+                                                                json!({
+                                                                    "status": "ok",
+                                                                    "jwt_token": jwt_token
+                                                                })
+                                                            },
+                                                            Err(error) => {
+                                                                json!({
+                                                                    "status": "error",
+                                                                    "error": error.to_string()
+                                                                })
+                                                            }
+                                                        }
+                                                    },
+                                                    Err(error) => {
+                                                        json!({
+                                                            "status": "error",
+                                                            "error": error.to_string()
+                                                        })
+                                                    }
+                                                }
+                                            },
+                                            Err(error) => {
+                                                json!({
+                                                    "status": "error",
+                                                    "error": error.to_string()
+                                                })
+                                            }
+                                        }
+                                    },
+                                    false => {
+                                        json!({
+                                            "status": "error",
+                                            "error": "Invalid username/password pair"
+                                        })
+                                    }
+                                }
+                            },
+                            Err(error) => {
+                                json!({
+                                    "status": "error",
+                                    "error": error.to_string()
+                                })
+                            }
+                        }
+                    },
+                    _ => {
+                        json!({
+                            "status": "error",
+                            "error": format!("Found more than 1 user with username {}", user.username)
+                        })
+                    }
+                }
+            },
+            Err(error) => {
+                json!({
+                    "status": "error",
+                    "error": error.to_string()
+                })
+            }
+        }
+    } else {
+            json!({
+                "status": "error",
+                "error": "Password 1 and Password 2 do not match"
+            })
+    }
+}
+
+
 #[catch(404)]
 fn not_found() -> JsonValue {
     json!({
@@ -320,7 +433,8 @@ fn main() -> Result<(), Error> {
             signup,
             login,
             userself,
-            changeemail
+            changeemail,
+            changepassword
         ])
         .attach(cors)
         .attach(DatabaseConnection::fairing())

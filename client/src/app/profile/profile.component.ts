@@ -10,6 +10,7 @@ import { User } from '../user/user';
 export class ProfileComponent implements OnInit {
 
     user: User;
+    password_changed_succesfully: bool = false;
 
     constructor(private userService: UserService) {
         this.user = new User();
@@ -33,6 +34,10 @@ export class ProfileComponent implements OnInit {
                 if (data.status === 'ok') {
                     this.userService.setJwtToken(data.jwt_token);
                     this.getSelf();
+                    this.password_changed_succesfully = true;
+                    setTimeout(() => {
+                        this.password_changed_succesfully = false;
+                    }, 2000);
                 } else {
                     console.error(data.error);
                 }

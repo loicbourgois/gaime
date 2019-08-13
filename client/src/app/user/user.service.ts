@@ -50,9 +50,13 @@ export class UserService {
                 password: password
             },
             httpOptions
-        ).subscribe(data => {
-            this.setJwtToken(data['jwt_token']);
-            this.router.navigate(['/profile']);
+        ).subscribe((data: any) => {
+            if (data.status === 'ok') {
+                this.setJwtToken(data['jwt_token']);
+                this.router.navigate(['/profile']);
+            } else {
+                console.error(data.error);
+            }
         });
     }
 
