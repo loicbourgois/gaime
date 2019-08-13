@@ -3,6 +3,6 @@
 
 <div id="games">
     <li *ngFor="let game of games">
-        <a routerLink="/game/{{game.game_id}}">{{game.name}}</a>
+        <a routerLink="/game/{{game.string_id}}">{{game.name}}</a>: {{game.description}}
     </li>
 </div>

@@ -24,9 +24,8 @@ export class HomeComponent implements OnInit {
 
     getGames() {
         this.gameService.getGames()
-            .subscribe(data => {
-                console.log(data);
-                this.games = data['games'];
+            .subscribe((data: any) => {
+                this.games = data;
             });
     }
 }

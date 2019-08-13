@@ -21,7 +21,15 @@ use rocket::http::Status;
 use rocket::request::{self, Request, FromRequest};
 
 
-type GameId = String;
+type GameStringId = String;
+
+
+#[derive(Serialize, Deserialize)]
+struct GaimeError {
+    status: String,
+    error: String,
+    message: String
+}
 
 
 #[derive(Serialize, Deserialize)]
@@ -40,8 +48,9 @@ struct NewEmail {
 
 #[derive(Serialize, Deserialize)]
 struct Game {
-    game_id: GameId,
-    name: String
+    string_id: GameStringId,
+    name: String,
+    description: String
 }
 
 
@@ -145,33 +154,73 @@ fn userself(user: User) -> Json<User> {
 
 
 #[get("/games")]
-fn games() -> JsonValue {
-    json!({
-        "games": [
-                Game {
-                    game_id: "snake".to_string(),
-                    name: "Snake".to_string()
-                }
-        ]
-    })
+fn games(database_connection: DatabaseConnection) -> Result<Json<Vec<Game>>, JsonValue> {
+    
+    match database_connection.query(
+        "SELECT string_id, name, description FROM games;",
+        &[]
+    ) {
+        Ok(results) => {
+            let mut games = Vec::new();
+            for row in results.iter() {
+                games.push(Game {
+                    string_id: row.get(0),
+                    name: row.get(1),
+                    description: row.get(2)
+                });
+            }
+            Ok(Json(games))
+        },
+        Err(error) => {
+            Err(json!(GaimeError {
+                status: "error".to_owned(),
+                error: error.to_string(),
+                message: error.to_string()
+            }))
+        }
+    }
 }
 
 
-#[get("/game/<game_id>")]
-fn game(game_id: GameId) -> Option<Json<Game>> {
-    match game_id.as_ref() {
-        "snake" => {
-            Some(
-                Json(
-                    Game {
-                        game_id: game_id,
-                        name: "Snake".to_string()
-                    }
-                )
-            )
+#[get("/game/<game_string_id>")]
+fn game(game_string_id: GameStringId, database_connection: DatabaseConnection) -> Result<Json<Game>, JsonValue> {
+    match database_connection.query(
+        "SELECT name, description FROM games WHERE string_id=$1;",
+        &[&game_string_id]
+    ) {
+        Ok(results) => {
+            match results.len() {
+                0 => {
+                    Err(json!(GaimeError {
+                        status: "error".to_owned(),
+                        error: "game_does_not_exist".to_owned(),
+                        message: format!("Game {} does not exist", game_string_id)
+                    }))
+                },
+                1 => {
+                    let game_name: String = results.get(0).get(0);
+                    let game_description: String = results.get(0).get(1);
+                    Ok(Json(Game {
+                        string_id: game_string_id,
+                        name: game_name,
+                        description: game_description
+                    }))
+                },
+                _ => {
+                    Err(json!(GaimeError {
+                        status: "error".to_owned(),
+                        error: "too_many_games".to_owned(),
+                        message: format!("Found more than 1 game with string_id {}", game_string_id)
+                    }))
+                }
+            }
         },
-        _ => {
-            None
+        Err(error) => {
+            Err(json!(GaimeError {
+                status: "error".to_owned(),
+                error: error.to_string(),
+                message: error.to_string()
+            }))
         }
     }
 }

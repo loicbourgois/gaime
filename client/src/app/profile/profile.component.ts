@@ -10,7 +10,7 @@ import { User } from '../user/user';
 export class ProfileComponent implements OnInit {
 
     user: User;
-    password_changed_succesfully: bool = false;
+    password_changed_succesfully: boolean = false;
 
     constructor(private userService: UserService) {
         this.user = new User();

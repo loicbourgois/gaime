@@ -1,1 +1,6 @@
+DROP TABLE IF EXISTS games_users_pools;
+DROP TABLE IF EXISTS users_plays;
+DROP TABLE IF EXISTS users_games;
 DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS games;
+DROP TABLE IF EXISTS plays;
