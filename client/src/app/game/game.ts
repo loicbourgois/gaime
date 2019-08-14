@@ -1,5 +1,6 @@
 export class Game {
-    game_id: string;
+    string_id: string;
     name: string;
     description: string;
+    websocket_url: string;
 }

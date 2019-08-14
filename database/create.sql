@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS games(
     string_id VARCHAR(128) UNIQUE NOT NULL,
     name VARCHAR(128) UNIQUE NOT NULL,
     description TEXT NOT NULL,
+    websocket_url TEXT NOT NULL,
     created_date TIMESTAMP,
     modified_date TIMESTAMP
 );

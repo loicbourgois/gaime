@@ -50,7 +50,8 @@ struct NewEmail {
 struct Game {
     string_id: GameStringId,
     name: String,
-    description: String
+    description: String,
+    websocket_url: String
 }
 
 
@@ -157,7 +158,7 @@ fn userself(user: User) -> Json<User> {
 fn games(database_connection: DatabaseConnection) -> Result<Json<Vec<Game>>, JsonValue> {
     
     match database_connection.query(
-        "SELECT string_id, name, description FROM games;",
+        "SELECT string_id, name, description, websocket_url FROM games;",
         &[]
     ) {
         Ok(results) => {
@@ -166,7 +167,8 @@ fn games(database_connection: DatabaseConnection) -> Result<Json<Vec<Game>>, Jso
                 games.push(Game {
                     string_id: row.get(0),
                     name: row.get(1),
-                    description: row.get(2)
+                    description: row.get(2),
+                    websocket_url: row.get(3)
                 });
             }
             Ok(Json(games))
@@ -185,7 +187,7 @@ fn games(database_connection: DatabaseConnection) -> Result<Json<Vec<Game>>, Jso
 #[get("/game/<game_string_id>")]
 fn game(game_string_id: GameStringId, database_connection: DatabaseConnection) -> Result<Json<Game>, JsonValue> {
     match database_connection.query(
-        "SELECT name, description FROM games WHERE string_id=$1;",
+        "SELECT name, description, websocket_url FROM games WHERE string_id=$1;",
         &[&game_string_id]
     ) {
         Ok(results) => {
@@ -200,10 +202,12 @@ fn game(game_string_id: GameStringId, database_connection: DatabaseConnection) -
                 1 => {
                     let game_name: String = results.get(0).get(0);
                     let game_description: String = results.get(0).get(1);
+                    let game_websocket_url: String = results.get(0).get(2);
                     Ok(Json(Game {
                         string_id: game_string_id,
                         name: game_name,
-                        description: game_description
+                        description: game_description,
+                        websocket_url: game_websocket_url
                     }))
                 },
                 _ => {

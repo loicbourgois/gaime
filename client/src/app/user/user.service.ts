@@ -85,4 +85,8 @@ export class UserService {
     setJwtToken(jwt_token) {
         localStorage.setItem('jwt_token', jwt_token);
     }
+
+    getJwt() {
+        return localStorage.getItem('jwt_token');
+    }
 }
