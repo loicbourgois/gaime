@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="12.1">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>260</x>
+      <y>230</y>
+      <w>130</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>valign=center
+halign=center
+Client 1</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>360</x>
+      <y>210</y>
+      <w>310</w>
+      <h>120</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[1] Find game</panel_attributes>
+    <additional_attributes>290;100;30;30</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>260</x>
+      <y>400</y>
+      <w>130</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>valign=center
+halign=center
+Client 2</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>650</x>
+      <y>300</y>
+      <w>130</w>
+      <h>90</h>
+    </coordinates>
+    <panel_attributes>valign=center
+halign=center
+Snake server</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1060</x>
+      <y>300</y>
+      <w>130</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>valign=center
+halign=center
+Server</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>360</x>
+      <y>350</y>
+      <w>310</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[4] Find game</panel_attributes>
+    <additional_attributes>290;30;30;90</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>750</x>
+      <y>270</y>
+      <w>330</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[2] Register User 1</panel_attributes>
+    <additional_attributes>310;50;30;50</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>750</x>
+      <y>290</y>
+      <w>330</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[5] Register User 2</panel_attributes>
+    <additional_attributes>310;50;30;50</additional_attributes>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1360</x>
+      <y>300</y>
+      <w>130</w>
+      <h>60</h>
+    </coordinates>
+    <panel_attributes>valign=center
+halign=center
+Database</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>1160</x>
+      <y>300</y>
+      <w>220</w>
+      <h>50</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.&gt;
+</panel_attributes>
+    <additional_attributes>200;30;30;30</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>1000</x>
+      <y>210</y>
+      <w>238</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[3] Matchmaking attempt</panel_attributes>
+    <additional_attributes>170;90;170;50;80;50;80;90</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>990</x>
+      <y>350</y>
+      <w>252</w>
+      <h>80</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[6] Succesfull matchmaking</panel_attributes>
+    <additional_attributes>180;30;180;60;90;60;90;30</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>750</x>
+      <y>320</y>
+      <w>330</w>
+      <h>70</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[7] Communicate matchmaking</panel_attributes>
+    <additional_attributes>30;50;310;50</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>580</x>
+      <y>220</y>
+      <w>256</w>
+      <h>100</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.
+[8] Instantiate game session</panel_attributes>
+    <additional_attributes>90;80;90;50;180;50;180;80</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>360</x>
+      <y>320</y>
+      <w>310</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.&gt;
+[9] Play game</panel_attributes>
+    <additional_attributes>290;30;30;90</additional_attributes>
+  </element>
+  <element>
+    <type>com.umlet.element.Relation</type>
+    <coordinates>
+      <x>360</x>
+      <y>250</y>
+      <w>310</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;.&gt;
+[9] Play game</panel_attributes>
+    <additional_attributes>290;90;30;30</additional_attributes>
+  </element>
+</diagram>
