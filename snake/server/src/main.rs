@@ -8,6 +8,9 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::{RefCell};
 use std::cell::RefMut;
+use std::thread;
+use std::time::Duration;
+use std::sync::{Mutex, Arc};
 
 #[derive(Serialize, Deserialize)]
 struct FindGameData {
@@ -28,6 +31,7 @@ struct WebSocketHandler {
     user: Option<User>,
     waiting_users: Rc<RefCell<HashMap<Username, User>>>,
     playing_users: Rc<RefCell<HashMap<Username, User>>>,
+    playing_users_2: Arc<Mutex<HashMap<Username, User>>>,
     senders: Rc<RefCell<HashMap<Username, Sender>>>
 }
 
@@ -104,11 +108,22 @@ impl WebSocketHandler {
                             Some(player_2_username) => {
                                 match waiting_users.remove(player_2_username) {
                                     Some(player_2) => {
-                                        playing_users.insert(player_1_username.to_string(), player_1);
-                                        playing_users.insert(player_2_username.to_string(), player_2);
-                                        match self.senders.borrow().get(player_2_username) {
+                                        playing_users.insert(player_1_username.to_string(), player_1.clone());
+                                        playing_users.insert(player_2_username.to_string(), player_2.clone());
+                                        match self.senders.borrow().clone().get(player_2_username) {
                                             Some(player_2_sender) => {
-                                                let player_1_sender = &self.sender;
+                                                let player_1_sender_game = self.sender.clone();
+                                                let player_2_sender_game = player_2_sender.clone();
+                                                let playing_users_2 = Arc::clone(&self.playing_users_2);
+                                                let handle = thread::spawn(|| {
+                                                    Game::new(
+                                                        player_1,
+                                                        player_2,
+                                                        player_1_sender_game,
+                                                        player_2_sender_game,
+                                                        playing_users_2
+                                                    ).run();
+                                                });
                                                 //
                                                 // TODO
                                                 // spin new thread with
@@ -117,6 +132,7 @@ impl WebSocketHandler {
                                                 // - player_1
                                                 // - player_2
                                                 //
+                                                //handle.join().unwrap();
                                                 player_2_sender.send("Opponent found");
                                                 self.sender.send("Opponent found")
                                             },
@@ -184,18 +200,61 @@ impl Handler for WebSocketHandler {
     }
 }
 
+struct Game {
+    player_1: User,
+    player_2: User,
+    player_1_sender: Sender,
+    player_2_sender: Sender,
+    playing_users: Arc<Mutex<HashMap<Username, User>>>
+}
+
+impl Game {
+
+    fn new(
+        player_1: User,
+        player_2: User,
+        player_1_sender: Sender,
+        player_2_sender: Sender,
+        playing_users: Arc<Mutex<HashMap<Username, User>>>
+    ) -> Game {
+        Game {
+            player_1,
+            player_2,
+            player_1_sender,
+            player_2_sender,
+            playing_users
+        }
+    }
+
+    fn run(&self) {
+        self.send_message_to_all("Game Start");
+        thread::sleep(Duration::from_secs(1));
+        self.send_message_to_all("Game End");
+    }
+
+    fn send_message_to_all(&self, message: &str) {
+        println!("{}", message);
+        self.player_1_sender.send(message);
+        self.player_2_sender.send(message);
+    }
+}
+
 fn main() {
     let waiting_users = Rc::new(RefCell::new(HashMap::new()));
     let playing_users = Rc::new(RefCell::new(HashMap::new()));
+    let playing_users_2 = Arc::new(Mutex::new(HashMap::new()));
     let senders = Rc::new(RefCell::new(HashMap::new()));
+    let url = "0.0.0.0:8080";
     listen(
-        "0.0.0.0:8080",
+        url,
         |sender| WebSocketHandler {
             sender: sender,
             user: None,
             waiting_users: waiting_users.clone(),
             playing_users: playing_users.clone(),
+            playing_users_2: playing_users_2.clone(),
             senders: senders.clone()
         }
-    ).unwrap()
+    );
+    println!("Server listening on {}", url);
 }
