@@ -1,5 +1,6 @@
 extern crate ws;
 extern crate rand;
+extern crate reqwest;
 
 #[macro_use] extern crate serde_derive;
 
@@ -12,8 +13,40 @@ use std::cell::RefMut;
 use std::thread;
 use std::time::Duration;
 use std::sync::{Mutex, Arc};
-use std::fmt;
 use rand::Rng;
+
+type Notification<'a> = &'a str;
+type PlayId = i32;
+
+static URL: &str = "0.0.0.0:8081";
+
+#[derive(Serialize, Deserialize, Clone)]
+struct NotificationResponse<'a> {
+    status: &'a str,
+    response_type: &'a str,
+    notification: Notification<'a>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct FindPlay {
+    status: String,
+    play_id: PlayId,
+    usernames: Vec<Username>
+}
+
+impl NotificationResponse<'_> {
+    fn new<'a>(notification: Notification<'a>) -> NotificationResponse<'a> {
+        NotificationResponse {
+            status: "ok",
+            response_type: "notification",
+            notification: notification
+        }
+    }
+
+    fn as_json_string(&self) -> String {
+        serde_json::to_string(&self).unwrap()
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 struct FindGameData {
@@ -27,7 +60,18 @@ struct GameCommandData {
     game_command: GameCommand
 }
 
-type Username = String;
+type Jwt = String;
+
+#[derive(Serialize, Deserialize, Clone, Debug, Hash)]
+struct Username(String);
+
+impl PartialEq for Username {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl Eq for Username {}
 
 #[derive(Serialize, Deserialize)]
 enum GameCommand {
@@ -37,29 +81,10 @@ enum GameCommand {
     Right
 }
 
-impl GameCommand {
-    fn to_string(&self) -> &str {
-        match self {
-            GameCommand::Up => {
-                "Up"
-            },
-            GameCommand::Down => {
-                "Down"
-            },
-            GameCommand::Left => {
-                "Left"
-            },
-            GameCommand::Right => {
-                "Right"
-            }
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct User {
     username: Username,
-    jwt: String
+    jwt: Jwt
 }
 
 struct WebSocketHandler {
@@ -100,10 +125,38 @@ impl WebSocketHandler {
     fn find_game(&mut self, data: String) -> Result<()> {
         match serde_json::from_str::<FindGameData>(&data) {
             Ok(find_game_data) => {
+                
+                let mut find_play_data = HashMap::new();
+                find_play_data.insert("username", find_game_data.user.username.clone().0);
+                find_play_data.insert("jwt", find_game_data.user.jwt.clone());
+                find_play_data.insert("game_string_id", "snake_1_v_1".to_owned());
+                let client = reqwest::Client::new();
+                //let mut headers = Headers::new();
+                //headers.set(Authorization(find_game_data.user.jwt.clone()));
+                match client
+                    .post("http://server:8000/findplay").json(&find_play_data)
+                    .header("Authorization", find_game_data.user.jwt.clone())
+                    .send()
+                {
+                    Ok(mut response) => {
+                        match response.text() {
+                            Ok(response_text) => {
+                                println!("Response: {:#?}", response_text);
+                            },
+                            Err(error) => {
+                                println!("Error: {}", error);
+                            }
+                        }
+                    },
+                    Err(error) => {
+                        println!("Error: {}", error);
+                    }
+                };
+
                 let playing_users_locked = self.playing_users.lock().unwrap();
                 match playing_users_locked.get(&find_game_data.user.username) {
                     Some(user) => {
-                        self.send_error(&format!("User {} already in game", user.username))
+                        self.send_error(&format!("User {:?} already in game", user.username))
                     },
                     None => {
                         drop(playing_users_locked);
@@ -116,7 +169,7 @@ impl WebSocketHandler {
                                 self.send_error("No waiting_users")
                             },
                             1 => {
-                                self.sender.send("Waiting for an opponent")
+                                self.sender.send(NotificationResponse::new("Waiting for an opponent").as_json_string())
                             },
                             _ => {
                                 self.find_opponent(&mut waiting_users)
@@ -138,7 +191,7 @@ impl WebSocketHandler {
                 let username = game_command_data.user.username.clone();
                 game_commands_locked.insert(username, game_command_data.game_command);
                 drop(game_commands_locked);
-                self.sender.send("ok")
+                Ok(())
             },
             Err(error) => {
                 println!("Error: {}", data);
@@ -160,8 +213,8 @@ impl WebSocketHandler {
                             Some(player_2_username) => {
                                 match waiting_users.remove(player_2_username) {
                                     Some(player_2) => {
-                                        self.playing_users.lock().unwrap().insert(player_1_username.to_string(), player_1.clone());
-                                        self.playing_users.lock().unwrap().insert(player_2_username.to_string(), player_2.clone());
+                                        self.playing_users.lock().unwrap().insert(player_1_username.clone(), player_1.clone());
+                                        self.playing_users.lock().unwrap().insert(player_2_username.clone(), player_2.clone());
                                         match self.senders.borrow().clone().get(player_2_username) {
                                             Some(player_2_sender) => {
                                                 let player_1_sender_game = self.sender.clone();
@@ -187,14 +240,14 @@ impl WebSocketHandler {
                                                 // - player_2
                                                 //
                                                 //handle.join().unwrap();
-                                                match player_2_sender.send("Opponent found") {
+                                                match player_2_sender.send(NotificationResponse::new("Opponent found").as_json_string()) {
                                                     Ok(_ok) => {
                                                     },
                                                     Err(error) => {
                                                         println!("{}", error);
                                                     }
                                                 };
-                                                self.sender.send("Opponent found")
+                                                self.sender.send(NotificationResponse::new("Opponent found").as_json_string())
                                             },
                                             None => {
                                                 self.send_error("No sender for opponent")
@@ -352,7 +405,7 @@ impl Game {
     }
 
     fn run(&self) {
-        self.send_message_to_all("Game Start");
+        self.send_notification_to_all("Game Start");
         let mut playing_users_locked = self.playing_users.lock().unwrap();
         playing_users_locked.remove(&self.player_1.username);
         playing_users_locked.remove(&self.player_2.username);
@@ -362,8 +415,10 @@ impl Game {
         let mut foods = Vec::new();
         let width = 21;
         let height = 21;
-        let mut rng = rand::thread_rng();
         let max_food_count = 3;
+        let initial_body_count = (width + height) / 4;
+        let steps_before_remove = (width + height) / 4;
+        let mut rng = rand::thread_rng();
         let mut food_count = 0;
         while food_count < max_food_count {
             foods.push(Food {
@@ -377,19 +432,21 @@ impl Game {
             x: (width - 1) / 4,
             y: (height - 1) / 4
         });
-        body_parts_1.push(BodyPart{
-            x: (width - 1) / 4 - 1,
-            y: (height - 1) / 4
-        });
         let mut body_parts_2 = Vec::new();
         body_parts_2.push(BodyPart{
             x: width - 1 - (width - 1) / 4,
             y: height - 1 - (height - 1) / 4
         });
-        body_parts_2.push(BodyPart{
-            x: width - 1 - (width - 1) / 4 + 1,
-            y: height - 1 - (height - 1) / 4
-        });
+        for i in 0..initial_body_count {
+            body_parts_1.push(BodyPart{
+                x: (width - 1) / 4 - 1,
+                y: (height - 1) / 4
+            });
+            body_parts_2.push(BodyPart{
+                x: width - 1 - (width - 1) / 4 + 1,
+                y: height - 1 - (height - 1) / 4
+            });
+        }
         let mut snakes = HashMap::new();
         snakes.insert(
             self.player_1.username.clone(),
@@ -447,36 +504,8 @@ impl Game {
                 };
                 drop(game_commands_locked);
             }
-            // update snake positions
-            for (k, snake) in game_state.snakes.clone().iter() {
-                if snake.is_alive {
-                    let c = snake.body_parts.len();
-                    for i in (1..c).rev() {
-                        game_state.snakes.get_mut(k).unwrap().body_parts[i].x = snake.body_parts[i-1].x;
-                        game_state.snakes.get_mut(k).unwrap().body_parts[i].y = snake.body_parts[i-1].y;
-                    }
-                    match game_state.snakes.get(k).unwrap().direction {
-                        Direction::Up => {
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].y += game_state.height - 1;
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].y %= game_state.height;
-                        },
-                        Direction::Down => {
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].y += game_state.height + 1;
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].y %= game_state.height;
-                        },
-                        Direction::Left => {
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].x += game_state.width - 1;
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].x %= game_state.width;
-                        },
-                        Direction::Right => {
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].x += game_state.width + 1;
-                            game_state.snakes.get_mut(k).unwrap().body_parts[0].x %= game_state.width;
-                        }
-                    }
-                } else {
-                    // Do nothing
-                }
-            }
+            // Update snakes positions
+            Game::update_snakes_positions(&mut game_state);
             // check snake - snake colision
             for (k1, snake1) in game_state.snakes.clone().iter() {
                 for (k2, snake2) in game_state.snakes.clone().iter() {
@@ -532,6 +561,14 @@ impl Game {
                 });
                 food_count += 1;
             }
+            // Remove last body part every N steps,
+            // where N = steps_before_remove
+            if elapsed_steps % steps_before_remove == 0 && elapsed_steps > 0 {
+                Game::remove_last_body_part(&mut game_state);
+            } else {
+                // Do nothing
+            }
+            //
             let mut alive_count = 0;
             for (k, snake) in game_state.snakes.clone().iter() {
                 if snake.is_alive {
@@ -548,7 +585,51 @@ impl Game {
             elapsed_steps += 1;
             self.send_message_to_all(&GameStateResponse::new(game_state.clone()).as_json_string());
         }
-        self.send_message_to_all("Game End");
+        self.send_notification_to_all("Game End");
+    }
+
+    fn update_snakes_positions(game_state: &mut GameState) {
+        for (k, snake) in game_state.snakes.clone().iter() {
+            let l = snake.body_parts.len();
+            if snake.is_alive && l > 0 {
+                for i in (1..l).rev() {
+                    game_state.snakes.get_mut(k).unwrap().body_parts[i].x = snake.body_parts[i-1].x;
+                    game_state.snakes.get_mut(k).unwrap().body_parts[i].y = snake.body_parts[i-1].y;
+                }
+                match game_state.snakes.get(k).unwrap().direction {
+                    Direction::Up => {
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].y += game_state.height - 1;
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].y %= game_state.height;
+                    },
+                    Direction::Down => {
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].y += game_state.height + 1;
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].y %= game_state.height;
+                    },
+                    Direction::Left => {
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].x += game_state.width - 1;
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].x %= game_state.width;
+                    },
+                    Direction::Right => {
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].x += game_state.width + 1;
+                        game_state.snakes.get_mut(k).unwrap().body_parts[0].x %= game_state.width;
+                    }
+                }
+            } else {
+                // Do nothing
+            }
+        }
+    }
+
+    fn remove_last_body_part(game_state: &mut GameState) {
+        for (k, snake) in game_state.snakes.clone().iter() {
+            let final_length = snake.body_parts.len().saturating_sub(1);
+            game_state.snakes.get_mut(k).unwrap().body_parts.truncate(final_length);
+            if final_length == 0 {
+                game_state.snakes.get_mut(k).unwrap().is_alive = false;
+            } else {
+                // Do nothing
+            }
+        }
     }
 
     fn send_message_to_all(&self, message: &str) {
@@ -567,6 +648,10 @@ impl Game {
             }
         };
     }
+
+    fn send_notification_to_all(&self, notification: Notification) {
+        self.send_message_to_all(&NotificationResponse::new(notification).as_json_string());
+    }
 }
 
 fn main() -> Result<()> {
@@ -574,9 +659,8 @@ fn main() -> Result<()> {
     let playing_users = Arc::new(Mutex::new(HashMap::new()));
     let senders = Rc::new(RefCell::new(HashMap::new()));
     let game_commands = Arc::new(Mutex::new(HashMap::new()));
-    let url = "0.0.0.0:8080";
     match listen(
-        url,
+        URL,
         |sender| WebSocketHandler {
             sender: sender,
             user: None,
@@ -587,11 +671,11 @@ fn main() -> Result<()> {
         }
     ) {
         Ok(ok) => {
-            println!("Server listening on {}", url);
+            println!("Server listening on {}", URL);
             Ok(ok)
         },
         Err(error) => {
-            println!("Could not start server on {}", url);
+            println!("Could not start server on {}", URL);
             println!("Error: {}", error);
             Err(error)
         }

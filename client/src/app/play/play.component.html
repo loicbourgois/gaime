@@ -15,107 +15,18 @@
             <button (click)="findGame()" id="find-game-button">Find game</button>
             <button (click)="quit()" id="quit-button" disabled>Quit</button>
         </div>
-        <textarea class="log" id="log-textarea"></textarea>
+        <textarea class="log" id="log-textarea" [(ngModel)]="logs"></textarea>
     </div>
     <div class="initialisation">
         <h2>Initialisation</h2>
-        <textarea id="initialisation-textarea">
-const Gaime = window.Gaime;
-
-Gaime.log('Initialisation start');
-
-Gaime.canvas = document.getElementById('canvas');
-Gaime.context = Gaime.canvas.getContext('2d');
-Gaime.context.clearRect(0, 0, Gaime.canvas.width, Gaime.canvas.height);
-if (!Gaime.snakeKeydownEventListener) {
-    Gaime.snakeKeydownEventListener = true;
-    document.addEventListener('keydown', function(e) {
-        switch (e.keyCode) {
-            case 37:
-                Gaime.sendGameCommand('Left');
-                break;
-            case 38:
-                Gaime.sendGameCommand('Up');
-                break;
-            case 39:
-                Gaime.sendGameCommand('Right');
-                break;
-            case 40:
-                Gaime.sendGameCommand('Down');
-                break;
-        }
-    });
-}
-Gaime.log('Initialisation end');
-        </textarea>
+        <textarea id="initialisation-textarea" [(ngModel)]="initialisationScript"></textarea>
     </div>
     <div class="render">
         <h2>Render loop</h2>
-        <textarea id="render-textarea">
-const Gaime = window.Gaime;
-
-const canvas = Gaime.canvas;
-const context = Gaime.context;
-
-if (!Gaime.GameState) {
-    return;
-}
-
-const cell_width = canvas.width / Gaime.GameState.width;
-const cell_height = canvas.height / Gaime.GameState.height;
-const border = 2;
-const width = cell_width - border*2;
-const height = cell_height - border*2;
-
-context.fillStyle = '#eee';
-for (let i = 0 ; i < Gaime.GameState.width ; i+=1) {
-    for (let j = 0 ; j < Gaime.GameState.height ; j+=1) {
-        const x = cell_width * i + border;
-        const y = cell_height * j - border;
-        context.fillRect(x, y, width, height);
-    }
-}
-
-for (let key in Gaime.GameState.snakes ) {
-    const snake = Gaime.GameState.snakes[key];
-    if (snake.username === Gaime.GameState.username) {
-        context.fillStyle = '#00f8';
-    } else {
-        context.fillStyle = '#f008';
-    }
-    snake.body_parts.forEach( body_part => {
-        const x = cell_width * body_part.x + border;
-        const y = cell_height * body_part.y - border;
-        context.fillRect(x, y, width, height);
-    });
-    if (snake.is_alive === false) {
-        context.fillStyle = '#0004';
-        snake.body_parts.forEach( body_part => {
-            const x = cell_width * body_part.x + border;
-            const y = cell_height * body_part.y - border;
-            context.fillRect(x, y, width, height);
-        });
-    } else {
-        // Do nothing
-    }
-}
-
-context.fillStyle = '#0f08';
-Gaime.GameState.foods.forEach( food => {
-    const x = cell_width * food.x + border;
-    const y = cell_height * food.y - border;
-    context.fillRect(x, y, width, height);
-});
-        </textarea>
+        <textarea id="render-textarea" [(ngModel)]="renderScript"></textarea>
     </div>
     <div class="on-data-received">
         <h2>On data received</h2>
-        <textarea id="on-data-received-textarea">
-const Gaime = window.Gaime;
-
-// Gaime.sendGameCommand("Up");
-
-// console.log(Gaime.GameState);
-        </textarea>
+        <textarea id="on-data-received-textarea" [(ngModel)]="onDataReceivedScript"></textarea>
     </div>
 </div>

@@ -12,14 +12,30 @@ services:
             - '5432:5432'
         volumes:
             - database-volume:/var/lib/database
+    game-luck-server:
+        container_name: game_luck_server_container
+        build: ./games/luck/server
+        volumes:
+            - './games/luck/server:/usr/src/games/luck/server'
+        ports:
+            - '8080:8080'
+        command: game_luck_server
+        links:
+            - server
+        environment:
+            - RUST_BACKTRACE=full
     snake-server:
         container_name: snake_server_container
         build: ./snake/server
         volumes:
             - './snake/server:/usr/src/snake/server'
         ports:
-            - '8080:8080'
+            - '8081:8081'
         command: snake_server
+        links:
+            - server
+        environment:
+            - RUST_BACKTRACE=full
     server:
         container_name: server_container
         build: ./server
@@ -30,22 +46,8 @@ services:
         command: server
         links:
             - database
-#    server_node:
-#        container_name: server_node_container
-#        build: ./server_node
-#        volumes:
-#            - './server_node:/usr/src/server_node'
-#        ports:
-#            - '8000:8000'
-#        command: npm start
-#        environment:
-#            PGHOST: database
-#            PGUSER: gaimemaster
-#            PGDATABASE: gaime
-#            PGPASSWORD: password
-#            PGPORT: 5432
-#        links:
-#            - database
+        environment:
+            - RUST_BACKTRACE=full
     client:
         container_name: client_container
         build: ./client

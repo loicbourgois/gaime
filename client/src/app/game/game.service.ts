@@ -15,6 +15,6 @@ export class GameService {
     }
 
     getGame(gameId) {
-        return this.http.get(`${this.baseUrl}/game/${gameId}`);
+        return this.http.get(`${this.baseUrl}/games/${gameId}`);
     }
 }

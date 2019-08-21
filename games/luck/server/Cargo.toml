@@ -1,5 +1,5 @@
 [package]
-name = "snake_server"
+name = "game_luck_server"
 version = "0.1.0"
 authors = ["loicbourgois <loic@bourgois.pro>"]
 edition = "2018"
@@ -7,10 +7,3 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ws = "*"
-serde_json = "1"
-serde = "1"
-serde_derive = "1"
-rand = "0.7"
-libc = "0.2.60"
-reqwest = "0.9.19"

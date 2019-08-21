@@ -2,6 +2,7 @@ import { BrowserModule } from '@angular/platform-browser';
 import { NgModule } from '@angular/core';
 import { HttpClientModule } from '@angular/common/http';
 import { JwtModule } from '@auth0/angular-jwt';
+import { FormsModule } from '@angular/forms';
 
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
@@ -39,7 +40,8 @@ import { PlayComponent } from './play/play.component';
                 whitelistedDomains: ['localhost:8000'],
                 blacklistedRoutes: []
             }
-        })
+        }),
+        FormsModule
     ],
     providers: [],
     bootstrap: [AppComponent]
