@@ -1,9 +1,22 @@
-use serde::{Serialize, Deserialize};
+mod api_response;
+mod api_request_data;
+mod play;
+mod types;
+mod user;
+
+use api_response::*;
+use play::*;
+use user::*;
+
 use std::process::Command;
-use reqwest::{Client};
 use std::process::Output;
 use std::io;
 use std::collections::HashMap;
+use std::thread;
+
+use reqwest::{Client};
+use serde::{Serialize, Deserialize};
+use ws::{Handler, Sender, Handshake, Message, CloseCode};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Game {
@@ -40,19 +53,6 @@ struct UserLogin<'a> {
     password: &'a str
 }
 
-#[derive(Serialize, Deserialize)]
-struct FindPlayRequest {
-    username: String,
-    game_string_id: String,
-    game_key: String
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-enum FindPlayResponse {
-    Play(Play),
-    WaitingForOpponent(WaitingForOpponent)
-}
-
 #[derive(Serialize, Deserialize, Debug)]
 struct Play {
     play_id: i32,
@@ -66,12 +66,12 @@ struct WaitingForOpponent {
     message: String
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+/*#[derive(Serialize, Deserialize, Debug)]
 struct EndPlayRequest {
     play_key: String,
     ranking: HashMap<String, f32>,
     play_id: i32
-}
+}*/
 
 #[derive(Serialize, Deserialize, Debug)]
 struct EndPlay {
@@ -309,7 +309,11 @@ fn test_012() {
 }
 
 #[test]
+//#[ignore]
 fn test_013_game_cycle_from_server() {
+    let mock_key = "123456";
+    let output = run_command_verbose(PSQL_COMMAND, &[POSTGRESQL_URL, "-f", "../database/insert-mock-user-game-keys.sql"]).unwrap();
+    assert!(output.status.success(), true);
     let game: Game = reqwest::get(&api_url("/games/luck")).unwrap().json().unwrap();
     println!("game: {:#?}", game);
     let game_designer: UserWithJwt = Client::new()
@@ -326,49 +330,64 @@ fn test_013_game_cycle_from_server() {
     println!("response_1: {:#?}", response_1);
     let game_with_key: GameWithKey = response_1.json().unwrap();
     println!("game_with_key: {:#?}", game_with_key);
-    for i in 0..3 {
-        let findplay_response_1: FindPlayResponse = Client::new()
+    for i in 0..1 {
+        let findplay_response_1: ApiResponse = Client::new()
             .post(&api_url("/findplay"))
-            .json(&FindPlayRequest {
+            .json(&api_request_data::FindPlay {
                 username: USER_1.username.to_string(),
                 game_string_id: game_luck().string_id,
-                game_key: game_with_key.key.clone()
+                game_key: game_with_key.key.clone(),
+                user_game_key: mock_key.to_owned()
             })
             .send().unwrap().json().unwrap();
         println!("findplay_response_1: {:#?}", findplay_response_1);
-        let findplay_response_2: FindPlayResponse = Client::new()
+        let findplay_response_2: ApiResponse = Client::new()
             .post(&api_url("/findplay"))
-            .json(&FindPlayRequest {
+            .json(&api_request_data::FindPlay {
                 username: USER_2.username.to_string(),
                 game_string_id: game_luck().string_id,
-                game_key: game_with_key.key.clone()
+                game_key: game_with_key.key.clone(),
+                user_game_key: mock_key.to_owned()
             })
             .send().unwrap().json().unwrap();
         println!("findplay_response_2: {:#?}", findplay_response_2);
-        let find_play_response_3: FindPlayResponse = Client::new()
+        let find_play_response_3: ApiResponse = Client::new()
             .post(&api_url("/findplay"))
-            .json(&FindPlayRequest {
+            .json(&api_request_data::FindPlay {
                 username: USER_3.username.to_string(),
                 game_string_id: game_luck().string_id,
-                game_key: game_with_key.key.clone()
+                game_key: game_with_key.key.clone(),
+                user_game_key: mock_key.to_owned()
             })
             .send().unwrap().json().unwrap();
         println!("find_play_response_3: {:#?}", find_play_response_3);
-        let play = match find_play_response_3 {
-            FindPlayResponse::Play(play) => play,
+        let play = match find_play_response_3.data {
+            Some(ResponseData::play(play)) => play,
             _ => panic!("")
         };
         println!("play: {:#?}", play);
-        let mut ranking = HashMap::new();
-        ranking.insert(USER_1.username.to_string(), 2.5);
-        ranking.insert(USER_2.username.to_string(), 1.0);
-        ranking.insert(USER_3.username.to_string(), 2.5);
+        let mut users_data = HashMap::new();
+        users_data.insert(USER_1.username.to_string(), api_request_data::EndPlayUserData {
+            username: USER_1.username.to_string(),
+            rank: 2.5,
+            user_game_key: mock_key.to_owned()
+        });
+        users_data.insert(USER_2.username.to_string(), api_request_data::EndPlayUserData {
+            username: USER_2.username.to_string(),
+            rank: 1.0,
+            user_game_key: mock_key.to_owned()
+        });
+        users_data.insert(USER_3.username.to_string(), api_request_data::EndPlayUserData {
+            username: USER_3.username.to_string(),
+            rank: 2.5,
+            user_game_key: mock_key.to_owned()
+        });
         let endplay: EndPlay = Client::new()
             .post(&api_url("/endplay"))
-            .json(&EndPlayRequest {
+            .json(&api_request_data::EndPlay {
                 play_key: play.key,
-                ranking: ranking,
-                play_id: play.play_id
+                play_id: play.play_id,
+                users_data: users_data,
             })
             .send().unwrap().json().unwrap();
         println!("endplay: {:#?}", endplay);
@@ -382,27 +401,65 @@ fn test_013_game_cycle_from_server() {
 }
 
 #[test]
+//#[ignore]
 fn test_014_game_cycle_from_clients() {
+    // Mock data
+    let output = run_command_verbose(PSQL_COMMAND, &[POSTGRESQL_URL, "-f", "../database/set-mock-game-keys.sql"]).unwrap();
+    assert!(output.status.success(), true);
+    let mock_key = "123456";
+    // Users
     let user_1: UserWithJwt = Client::new()
         .post(&api_url("/login"))
         .json(&USER_1_LOGIN)
         .send().unwrap()
         .json().unwrap();
-    //println!("user_1: {:#?}", user_1);
+    println!("user_1: {:#?}", user_1);
     let user_2: UserWithJwt = Client::new()
         .post(&api_url("/login"))
         .json(&USER_2_LOGIN)
         .send().unwrap()
         .json().unwrap();
-    //println!("user_2: {:#?}", user_2);
+    println!("user_2: {:#?}", user_2);
     let user_3: UserWithJwt = Client::new()
         .post(&api_url("/login"))
         .json(&USER_3_LOGIN)
         .send().unwrap()
         .json().unwrap();
-    //println!("user_3: {:#?}", user_3);
+    println!("user_3: {:#?}", user_3);
+    // Game
     let game: Game = reqwest::get(&api_url("/games/luck")).unwrap().json().unwrap();
-    //println!("game: {:#?}", game);
+    println!("game: {:#?}", game);
+    
+    // Launch game
+    struct WsClient {sender: Sender, username: String, user_game_key: String}
+    impl Handler for WsClient {
+        fn on_open(&mut self, _: Handshake) -> Result<(), ws::Error> {
+            let req = format!("{}{}{}{}{}", r#"{"code":"findplay", "data": { "findplay" : {"username":""#, self.username, r#"", "user_game_key":""#, self.user_game_key, r#""}}}"#);
+            self.sender.send(req)
+        }
+        fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
+            println!("Got message: {}", msg);
+            Ok(())
+        }
+    }
+    let websocket_url_1 = game.websocket_url.clone();
+    let websocket_url_2 = game.websocket_url.clone();
+    let websocket_url_3 = game.websocket_url.clone();
+    let mock_key_1 = mock_key.clone();
+    let mock_key_2 = mock_key.clone();
+    let mock_key_3 = mock_key.clone();
+    let thread_1 = thread::spawn(move || {
+        ws::connect(websocket_url_1, |sender| WsClient {sender: sender, username: "user_1".to_owned(), user_game_key: mock_key_1.to_owned()} ).unwrap();
+    });
+    let thread_2 = thread::spawn(move || {
+        ws::connect(websocket_url_2, |sender| WsClient {sender: sender, username: "user_2".to_owned(), user_game_key: mock_key_2.to_owned()} ).unwrap();
+    });
+    let thread_3 = thread::spawn(move || {
+        ws::connect(websocket_url_3, |sender| WsClient {sender: sender, username: "user_3".to_owned(), user_game_key: mock_key_3.to_owned()} ).unwrap();
+    });
+    let result_1 = thread_1.join();
+    let result_2 = thread_2.join();
+    let result_3 = thread_3.join();
 }
 
 

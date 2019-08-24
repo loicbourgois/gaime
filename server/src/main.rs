@@ -19,67 +19,25 @@ use jwt::{encode, decode, Header, Validation};
 use bcrypt::{DEFAULT_COST, hash, verify};
 use rocket::Outcome;
 use rocket::http::Status;
-use rocket::request::{self, Request, FromRequest};
+//use rocket/*::{self, Request, FromRequest}*/;
 use std::collections::HashMap;
 use rand::{self, Rng};
 use glicko2::{Glicko2Rating, GameResult};
 
-mod errors {
-    error_chain!{
-        foreign_links {
-            RocketPostgresError(rocket_contrib::databases::postgres::Error);
-            Jwt(jwt::errors::Error);
-            //NoJwt2(JwtError::NoJwt);
-            Fmt(::std::fmt::Error);
-            BcryptError(bcrypt::BcryptError);
-            RocketCorsError(rocket_cors::Error);
-        }
-        errors {
-            GameNotFound(s: String) {
-                description("game not found")
-                display("game not found: '{}'", s)
-            }
-            TooManyGames(s: String) {
-                description("too many games")
-                display("too many games: '{}'", s)
-            }
-            UserNotFound {
-                description("user not found")
-            }
-            InvalidUsernamePasswordPair {
-                description("invalid username/password pair")
-            }
-            TooManyUsers {
-                description("too many users")
-            }
-            PasswordsDoNotMatch {
-                description("passwords do not match")
-            }
-            InvalidGameKey {
-                description("invalid game key")
-            }
-            InvalidPlayKey {
-                description("invalid play key")
-            }
-        }
-    }
-}
+mod data;
+mod types;
+mod response;
+mod rating;
+use data::Play;
+use response::{Response, ResponseData};
+mod errors;
 use errors::*;
+use types::*;
+use rating::*;
 
 static KEY: &str = "secret";
 static GLICKO_SYS_CONSTANT: f64 = 0.5;
-static MARGIN_FOR_WIN: f32 = 0.01;
-
-type GameStringId = String;
-type PlayId = i32;
-type Username = String;
-type Rank = i32;
-type UserId = i32;
-type GameId = i32;
-
-// #[derive(Serialize, Deserialize)]
-// struct Jwt(String);
-type Jwt = String;
+static MARGIN_FOR_WIN: f64 = 0.01;
 
 #[derive(Serialize, Deserialize)]
 struct User {
@@ -108,62 +66,6 @@ struct UserWithJwt {
 }
 
 #[derive(Serialize, Deserialize)]
-enum FindPlayResponse {
-    Play(Play),
-    WaitingForOpponent(WaitingForOpponent),
-    GaimeError(GaimeError)
-}
-
-#[derive(Serialize, Deserialize)]
-struct Play {
-    play_id: PlayId,
-    usernames: Vec<Username>,
-    key: String
-}
-
-#[derive(Serialize, Deserialize)]
-struct WaitingForOpponent {
-    code: String,
-    message: String
-}
-
-impl WaitingForOpponent {
-    fn new() -> WaitingForOpponent {
-        WaitingForOpponent {
-            code: "waiting_opponent".to_owned(),
-            message: "Waiting for opponent".to_owned()
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize)]
-struct MyGlicko2Rating {
-    value: f64,
-    deviation: f64,
-    volatility: f64
-}
-
-#[derive(Serialize, Deserialize)]
-struct EndPlayRequest {
-    play_key: String,
-    ranking: HashMap<String, f32>,
-    play_id: PlayId
-}
-
-#[derive(Serialize, Deserialize)]
-struct EndPlay {
-    game_id: GameId,
-    play_id: PlayId,
-    ratings: HashMap<String, Rating>
-}
-
-#[derive(Serialize, Deserialize)]
-struct Rating {
-    old_rating: MyGlicko2Rating,
-    new_rating: MyGlicko2Rating
-}
-
-#[derive(Serialize, Deserialize)]
 struct GaimeError {
     status: String,
     error: String,
@@ -186,13 +88,6 @@ struct NewPassword {
 #[derive(Serialize, Deserialize)]
 struct NewEmail {
     new_email: String
-}
-
-#[derive(Serialize, Deserialize)]
-struct FindPlayRequest {
-    username: String,
-    game_string_id: String,
-    game_key: String
 }
 
 #[derive(Serialize, Deserialize)]
@@ -270,9 +165,9 @@ fn user_from_jwt_token(database_connection: &DatabaseConnection, jwt_token: &str
 }
 
 
-impl<'a, 'r> FromRequest<'a, 'r> for User {
+impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for User {
     type Error = JwtError;
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+    fn from_request(request: &'a rocket::Request<'r>) -> rocket::request::Outcome<Self, Self::Error> {
         match request.guard::<DatabaseConnection>() {
             Outcome::Success(database_connection) => {
                 match request.headers().get_one("Authorization") {
@@ -333,9 +228,9 @@ fn is_game_designer (database_connection: & DatabaseConnection, user: & User) ->
     }
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for GameDesigner {
+impl<'a, 'r> rocket::request::FromRequest<'a, 'r> for GameDesigner {
     type Error = JwtError;
-    fn from_request(request: &'a Request<'r>) -> request::Outcome<Self, Self::Error> {
+    fn from_request(request: &'a rocket::Request<'r>) -> rocket::request::Outcome<Self, Self::Error> {
         match request.guard::<DatabaseConnection>() {
             Outcome::Success(database_connection) => {
                 match request.headers().get_one("Authorization") {
@@ -436,6 +331,37 @@ fn games_post(database_connection: DatabaseConnection, game_designer: GameDesign
         ]
     )?;
     Ok(game)
+}
+
+#[post("/users/<username>/games/<game_string_id>/key")]
+fn user_game_key_post(
+    username: Username,
+    game_string_id: GameStringId,
+    database_connection: DatabaseConnection,
+    user: User
+) -> Result<Json<GameWithKey>> {
+    if username == user.username { Ok(()) }
+        else { Err(ErrorKind::UsernamesDoNotMatch) }?;
+    let game_string_id_from_db: String = database_connection.query(
+        "select string_id
+        from games
+        where games.string_id = $1",
+        &[&game_string_id])?.get(0).get(0);
+    let rand_number: i64 = rand::thread_rng().gen();
+    let new_key = hash(&rand_number.to_string(), DEFAULT_COST)?;
+    let new_key_hash = hash(&new_key, DEFAULT_COST)?;
+    database_connection.execute(
+        "insert into users_games_keys (user_id, game_id, key_hash)
+            select (users.user_id, $2, $3)
+            where users.user_username = $1
+            on conflict (user_id, game_id)
+                do update set key_hash = $3;",
+        &[&user.username, &game_string_id_from_db, &new_key_hash]
+    )?;
+    Ok(Json(GameWithKey {
+        key: new_key,
+        string_id: game_string_id_from_db
+    }))
 }
 
 #[post("/games/<game_string_id>/newkey")]
@@ -540,8 +466,8 @@ fn users_post(database_connection: DatabaseConnection, new_user: Json<NewUser>) 
     }))
 }
 
-#[post("/changeemail", data = "<new_email>")]
-fn changeemail(database_connection: DatabaseConnection, new_email: Json<NewEmail>, user: User) -> Result<Json<User>> {
+#[post("/email", data = "<new_email>")]
+fn email_post(database_connection: DatabaseConnection, new_email: Json<NewEmail>, user: User) -> Result<Json<User>> {
     database_connection.execute(
         "UPDATE users
         SET email=$1
@@ -554,8 +480,8 @@ fn changeemail(database_connection: DatabaseConnection, new_email: Json<NewEmail
     }))
 }
 
-#[post("/changepassword", data = "<new_password>")]
-fn changepassword(database_connection: DatabaseConnection, new_password: Json<NewPassword>, user: User) -> Result<Json<UserWithJwt>> {
+#[post("/password", data = "<new_password>")]
+fn password_post(database_connection: DatabaseConnection, new_password: Json<NewPassword>, user: User) -> Result<Json<UserWithJwt>> {
     if new_password.password_1 == new_password.password_2 {Ok(())}
         else {Err(ErrorKind::PasswordsDoNotMatch)}?;
     let results = database_connection.query(
@@ -599,19 +525,38 @@ fn changepassword(database_connection: DatabaseConnection, new_password: Json<Ne
     }
 }
 
-#[post("/findplay", data = "<find_play_request>")]
-fn findplay(database_connection: DatabaseConnection, find_play_request: Json<FindPlayRequest>) -> Result<Json<FindPlayResponse>> {
+#[post("/findplay", data = "<find_play_data>")]
+fn findplay(database_connection: DatabaseConnection, find_play_data: Json<data::FindPlay>) -> Result<Json<Response>> {
+    // Verify the game key
     let results = database_connection.query(
         "select games.game_id, games.key_hash, games.player_count
         from games
         where games.string_id = $1;",
-        &[&find_play_request.game_string_id]
+        &[&find_play_data.game_string_id]
     )?;
     let game_id : GameId = results.get(0).get(0);
     let game_key_hash : String = results.get(0).get(1);
     let game_player_count : i32 = results.get(0).get(2);
-    if verify(&find_play_request.game_key, &game_key_hash)? {Ok(())}
+    if verify(&find_play_data.game_key, &game_key_hash)? {Ok(())}
         else {Err(ErrorKind::InvalidGameKey)}?;
+    // Verify the user game key
+    let results = database_connection.query(
+        "select users_games_keys.key_hash
+        from users_games_keys, users, games
+        where users.username = $1
+            and games.string_id = $2
+            and users_games_keys.game_id = games.game_id
+            and users_games_keys.user_id = users.user_id;",
+        &[&find_play_data.username, &find_play_data.game_string_id]
+    )?;
+    let user_game_key_hash : String = results.get(0).get(0);
+    if verify(&find_play_data.user_game_key, &user_game_key_hash)? {
+        // Do nothing
+    } else {
+        let code = response::Code::InvalidUserGameKey;
+        let data = Some(ResponseData::findplay(find_play_data.into_inner()));
+        return Ok(Json(Response::new(code, data)));
+    }
     // Insert user into waiting pool
     database_connection.execute(
         "insert into users_waiting_for_games (game_id, user_id)
@@ -619,7 +564,7 @@ fn findplay(database_connection: DatabaseConnection, find_play_request: Json<Fin
         from games, users
         where games.string_id = $1
             and users.username = $2;",
-        &[&find_play_request.game_string_id, &find_play_request.username]
+        &[&find_play_data.game_string_id, &find_play_data.username]
     )?;
     // Find other players waiting for the same game
     let users_results = database_connection.query(
@@ -628,11 +573,9 @@ fn findplay(database_connection: DatabaseConnection, find_play_request: Json<Fin
         where games.string_id = $1
             and users_waiting_for_games.game_id = games.game_id
             and users_waiting_for_games.user_id = users.user_id;",
-        &[&find_play_request.game_string_id]
+        &[&find_play_data.game_string_id]
     )?;
     if users_results.len() >= game_player_count as usize {
-        //let opponent_user_id: UserId = results.get(0).get(0);
-        //let opponent_username : String = results.get(0).get(1);
         // Create new play
         let rand_number: i64 = rand::thread_rng().gen();
         let play_key = hash(&rand_number.to_string(), DEFAULT_COST)?;
@@ -662,42 +605,58 @@ fn findplay(database_connection: DatabaseConnection, find_play_request: Json<Fin
             )?;
             usernames.push(user_result_username);
         }
-        Ok(Json(FindPlayResponse::Play(Play {
-            play_id: play_id,
-            usernames: usernames,
-            key: play_key
-        })))
+        Ok(Json( Response::new(response::Code::PlayFound, Some(ResponseData::play(
+            Play {
+                play_id: play_id,
+                usernames: usernames,
+                key: play_key
+            }
+        )))))
     } else {
-        Ok(Json(FindPlayResponse::WaitingForOpponent(
-            WaitingForOpponent::new()
-        )))
+        Ok(Json( Response::new(response::Code::WaitingForOpponent, None) ))
     }
 }
 
-
-#[post("/endplay", data = "<end_play_request>")]
-fn endplay(database_connection: DatabaseConnection, end_play_request: Json<EndPlayRequest>) -> Result<Json<EndPlay>> {
+#[post("/endplay", data = "<end_play_data>")]
+fn endplay(database_connection: DatabaseConnection, end_play_data: Json<data::EndPlay>) -> Result<Json<response::EndPlay>> {
     // Verify that we are authorized to end the play
     // The key needs to be validated against the hash stored in the database
     let query_results = database_connection.query(
         "select plays.key_hash
         from plays
         where plays.play_id = $1;",
-        &[&end_play_request.play_id]
+        &[&end_play_data.play_id]
     )?;
     let play_key_hash : String = query_results.get(0).get(0);
-    if verify(&end_play_request.play_key, &play_key_hash)? {Ok(())}
+    if verify(&end_play_data.play_key, &play_key_hash)? {Ok(())}
         else {Err(ErrorKind::InvalidPlayKey)}?;
+    // Verify that each player knows it's game key
+    for (username, user_data) in end_play_data.users_data.iter() {
+        let query_results = database_connection.query(
+            "select users_games_keys.key_hash
+            from users_games_keys, users, plays
+            where users.username = $1
+                and plays.play_id = $2
+                and users_games_keys.user_id = users.user_id
+                and users_games_keys.game_id = plays.game_id;",
+            &[&user_data.username, &end_play_data.play_id]
+        )?;
+        if query_results.len() > 0 {Ok(())}
+            else {Err(ErrorKind::InvalidUserGameKey)}?;
+        let user_game_key_hash: Key = query_results.get(0).get(0);
+        if verify(&user_data.user_game_key, &user_game_key_hash)? {Ok(())}
+            else {Err(ErrorKind::InvalidUserGameKey)}?;
+    }
     // Get game_id
     let game_id: GameId = database_connection.query(
         "select game_id
         from plays
         where plays.play_id = $1;",
-        &[&end_play_request.play_id]
+        &[&end_play_data.play_id]
     )?.get(0).get(0);
     // Init ratings if they don't exist
     let initial_rating = Glicko2Rating::unrated();
-    for username in end_play_request.ranking.keys() {
+    for username in end_play_data.users_data.keys() {
         database_connection.execute(
             "insert into users_ratings (game_id, user_id, glicko2_value, glicko2_deviation, glicko2_volatility)
             select $1, users.user_id, $2, $3, $4
@@ -723,7 +682,7 @@ fn endplay(database_connection: DatabaseConnection, end_play_request: Json<EndPl
             and users.user_id = users_in_plays.user_id
             and users_ratings.game_id = plays.game_id
             and users_ratings.user_id = users.user_id;",
-        &[&end_play_request.play_id]
+        &[&end_play_data.play_id]
     )?;
     // Setup ratings before calculation
     let mut old_glicko2_ratings = HashMap::new();
@@ -745,13 +704,13 @@ fn endplay(database_connection: DatabaseConnection, end_play_request: Json<EndPl
         });
     }
     // Calculate ratings
-    for (username_1, rank_1) in end_play_request.ranking.iter() {
+    for (username_1, user_data_1) in end_play_data.users_data.iter() {
         let mut results = Vec::new();
         let prior_glicko2_rating = *old_glicko2_ratings.get(username_1).unwrap();
-        for (username_2, rank_2) in end_play_request.ranking.iter() {
+        for (username_2, user_data_2) in end_play_data.users_data.iter() {
             if username_1 != username_2 {
                 let glicko2_rating_2 = *old_glicko2_ratings.get(username_2).unwrap();
-                let rank_diff = rank_1 - rank_2;
+                let rank_diff = user_data_1.rank - user_data_2.rank;
                 let game_result = if rank_diff < - MARGIN_FOR_WIN { // username_1 win
                     GameResult::win(glicko2_rating_2)
                 } else if rank_diff > MARGIN_FOR_WIN { // username_1 lose
@@ -772,7 +731,7 @@ fn endplay(database_connection: DatabaseConnection, end_play_request: Json<EndPl
     }
     // Convert Glicko2Rating to MyGlicko2Rating for serialisation
     let mut ratings = HashMap::new();
-    for username in end_play_request.ranking.keys() {
+    for username in end_play_data.users_data.keys() {
         let old_rating = old_glicko2_ratings.get(username).unwrap();
         let new_rating = new_glicko2_ratings.get(username).unwrap();
         ratings.insert(username.to_string(), Rating {
@@ -809,23 +768,23 @@ fn endplay(database_connection: DatabaseConnection, end_play_request: Json<EndPl
     for user_data in users_data.iter() {
         let user_id: i32 = user_data.get(1);
         let username: String = user_data.get(2);
-        let user_rank: f64 = (*end_play_request.ranking.get(&username).unwrap()) as f64;
+        let user_rank: Rank = end_play_data.users_data.get(&username).unwrap().rank;
         database_connection.execute(
             "insert into plays_results (play_id, user_id, user_rank)
             values ($1, $2, $3)",
-            &[&end_play_request.play_id, &user_id, &user_rank]
+            &[&end_play_data.play_id, &user_id, &user_rank]
         )?;
     }
     // Delete users from users_in_plays
     database_connection.execute(
         "delete from users_in_plays
         where users_in_plays.play_id = $1;",
-        &[&end_play_request.play_id]
+        &[&end_play_data.play_id]
     )?;
     // Send response with old and new ratings for each user
-    Ok(Json(EndPlay {
+    Ok(Json(response::EndPlay {
         game_id: game_id,
-        play_id: end_play_request.play_id,
+        play_id: end_play_data.play_id,
         ratings: ratings
     }))
 }
@@ -849,8 +808,8 @@ fn main() -> Result<()> {
     }.to_cors()?;
     rocket::ignite()
         .mount("/", routes![
-            changeemail,
-            changepassword,
+            email_post,
+            password_post,
             endplay,
             findplay,
             game,
@@ -859,7 +818,8 @@ fn main() -> Result<()> {
             games_newkey,
             login,
             users_post,
-            userself
+            userself,
+            user_game_key_post
         ])
         .attach(cors)
         .attach(DatabaseConnection::fairing())

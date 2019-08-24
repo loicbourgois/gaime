@@ -18,19 +18,21 @@ services:
         volumes:
             - './games/luck/server:/usr/src/games/luck/server'
         ports:
-            - '8080:8080'
+            - '${GAME_LUCK_PORT}:${GAME_LUCK_PORT}'
         command: game_luck_server
         links:
             - server
         environment:
             - RUST_BACKTRACE=full
+            - API_ROOT_URL=${API_ROOT_URL}
+            - GAME_LUCK_URL=${GAME_LUCK_URL}
     snake-server:
         container_name: snake_server_container
         build: ./snake/server
         volumes:
             - './snake/server:/usr/src/snake/server'
         ports:
-            - '8081:8081'
+            - '${GAME_SNAKE_PORT}:${GAME_SNAKE_PORT}'
         command: snake_server
         links:
             - server

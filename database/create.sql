@@ -66,3 +66,12 @@ CREATE TABLE IF NOT EXISTS users_ratings (
     PRIMARY KEY (user_id, game_id)
 );
 
+CREATE TABLE IF NOT EXISTS users_games_keys (
+    user_id integer REFERENCES users(user_id) NOT NULL,
+    game_id integer REFERENCES games(game_id) NOT NULL,
+    key_hash VARCHAR(128) NOT NULL,
+    created_date TIMESTAMP NOT NULL DEFAULT now(),
+    modified_date TIMESTAMP NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, game_id)
+);
+
