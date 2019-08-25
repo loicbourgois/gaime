@@ -1,12 +1,12 @@
-use crate::types::*;
-use crate::client;
 use crate::api;
+use crate::client;
+use crate::types::*;
 
 //use std::rc::Rc;
 //use std::cell::RefCell;
 //use std::env;
-use std::sync::mpsc;
 use std::collections::HashMap;
+use std::sync::mpsc;
 //use std::sync::{Mutex, Arc};
 //use std::thread;
 
@@ -29,7 +29,7 @@ pub struct UserData {
     pub receiver: mpsc::Receiver<GameCommand>,
     pub sender: ws::Sender,
     pub username: Username,
-    pub user_game_key: Key
+    pub user_game_key: Key,
 }
 
 impl Game {
@@ -49,11 +49,14 @@ impl Game {
         for user_data in self.users_data.iter() {
             // TODO: make sure the sum of ranks is meaningfull
             let rank: Rank = rng.gen_range(0.0, 10.0);
-            api_users_data.insert(user_data.username.clone(), api::data::EndPlayUserData {
-                username: user_data.username.clone(),
-                rank: rank,
-                user_game_key: user_data.user_game_key.clone()
-            });
+            api_users_data.insert(
+                user_data.username.clone(),
+                api::data::EndPlayUserData {
+                    username: user_data.username.clone(),
+                    rank: rank,
+                    user_game_key: user_data.user_game_key.clone(),
+                },
+            );
         }
         let api_data = api::data::EndPlay {
             play_key: self.play_key.clone(),
@@ -63,11 +66,15 @@ impl Game {
         let api_response: api::response::Response = reqwest::Client::new()
             .post(&self.api_url("/endplay"))
             .json(&api_data)
-            .send().unwrap().json().unwrap();
+            .send()
+            .unwrap()
+            .json()
+            .unwrap();
         println!("api_response: {:#?}", api_response);
         // Clients
         for user_data in self.users_data.iter() {
-            let response = client::response::Response::new(client::response::Code::GameEnded, None).unwrap();
+            let response =
+                client::response::Response::new(client::response::Code::GameEnded, None).unwrap();
             client::response::Response::send(&user_data.sender, response);
             user_data.sender.close(ws::CloseCode::Normal);
         }

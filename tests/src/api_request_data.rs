@@ -2,7 +2,7 @@ use crate::types::*;
 
 use std::collections::HashMap;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct EndPlay {
@@ -15,14 +15,13 @@ pub struct EndPlay {
 pub struct EndPlayUserData {
     pub username: Username,
     pub rank: Rank,
-    pub user_game_key: Key
+    pub user_game_key: Key,
 }
-
 
 #[derive(Serialize, Deserialize)]
 pub struct FindPlay {
     pub username: String,
     pub game_string_id: String,
     pub game_key: String,
-    pub user_game_key: String
+    pub user_game_key: String,
 }

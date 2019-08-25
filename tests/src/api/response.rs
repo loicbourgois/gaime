@@ -1,4 +1,4 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::api;
 
@@ -7,7 +7,7 @@ use crate::api;
 pub enum Data {
     play(api::data::Play),
     findplay(api::data::FindPlay),
-    endplay(api::data::EndPlayOk)
+    endplay(api::data::EndPlayOk),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -15,5 +15,5 @@ pub struct Response {
     pub status: i32,
     pub code: String,
     pub data: Option<Data>,
-    pub message: String
+    pub message: String,
 }

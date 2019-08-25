@@ -1,6 +1,6 @@
 //#[macro_use] extern crate error_chain;
 
-error_chain!{
+error_chain! {
     foreign_links {
         RocketPostgresError(rocket_contrib::databases::postgres::Error);
         Jwt(jwt::errors::Error);

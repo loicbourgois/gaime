@@ -1,23 +1,23 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::play::*;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Code {
     PlayFound,
-    WaitingForOpponent
+    WaitingForOpponent,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ResponseData {
     //usernames(Vec<String>),
     play(Play),
-    enplay()
+    enplay(),
 }
 
 pub struct CodeDataPair {
     pub code: Code,
-    pub data: Option<ResponseData>
+    pub data: Option<ResponseData>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -25,5 +25,5 @@ pub struct ApiResponse {
     status: i32,
     code: String,
     pub data: Option<ResponseData>,
-    pub message: String
+    pub message: String,
 }

@@ -1,9 +1,9 @@
 //use crate::client::*;
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Request {
     pub code: String,
-    pub data: crate::client::data::Data
+    pub data: crate::client::data::Data,
 }

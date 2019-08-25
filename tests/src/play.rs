@@ -1,4 +1,4 @@
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 use crate::user::*;
 
@@ -8,5 +8,5 @@ pub type PlayId = i32;
 pub struct Play {
     pub play_id: PlayId,
     pub usernames: Vec<Username>,
-    pub key: String
+    pub key: String,
 }

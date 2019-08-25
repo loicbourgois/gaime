@@ -1,15 +1,9 @@
-
-
 #[derive(Debug, Fail)]
 pub enum MyError {
     #[fail(display = "invalid play")]
-    InvalidPlay {
-    },
+    InvalidPlay {},
     #[fail(display = "invalid code data pair")]
-    InvalidCodeDataPair {
-    },
+    InvalidCodeDataPair {},
     #[fail(display = "unknown api code : {}", code)]
-    UnknownApiCode {
-        code: String
-    }
+    UnknownApiCode { code: String },
 }

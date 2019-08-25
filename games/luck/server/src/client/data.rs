@@ -1,16 +1,16 @@
 use crate::types::*;
 
-use serde_derive::{Serialize, Deserialize};
+use serde_derive::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Data {
     username(String),
-    findplay(FindPlay)
+    findplay(FindPlay),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FindPlay {
     pub username: Username,
-    pub user_game_key: Key
+    pub user_game_key: Key,
 }
