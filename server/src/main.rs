@@ -352,10 +352,12 @@ fn user_game_key_post(
     let new_key_hash = hash(&new_key, DEFAULT_COST)?;
     database_connection.execute(
         "insert into users_games_keys (user_id, game_id, key_hash)
-            select (users.user_id, $2, $3)
-            where users.user_username = $1
-            on conflict (user_id, game_id)
-                do update set key_hash = $3;",
+            (select users.user_id, games.game_id, $3
+            from users, games
+            where users.username = $1
+                and games.string_id = $2)
+        on conflict (user_id, game_id)
+            do update set key_hash = $3;",
         &[&user.username, &game_string_id_from_db, &new_key_hash]
     )?;
     Ok(Json(GameWithKey {
@@ -534,11 +536,12 @@ fn findplay(database_connection: DatabaseConnection, find_play_data: Json<data::
         where games.string_id = $1;",
         &[&find_play_data.game_string_id]
     )?;
+    if results.len() > 0 { Ok(()) }
+        else { Err("Not enough results") }?;
     let game_id : GameId = results.get(0).get(0);
     let game_key_hash : String = results.get(0).get(1);
     let game_player_count : i32 = results.get(0).get(2);
-    if verify(&find_play_data.game_key, &game_key_hash)? {Ok(())}
-        else {Err(ErrorKind::InvalidGameKey)}?;
+    if verify(&find_play_data.game_key, &game_key_hash)? {Ok(())} else {Err(ErrorKind::InvalidGameKey)}?;
     // Verify the user game key
     let results = database_connection.query(
         "select users_games_keys.key_hash
@@ -549,6 +552,7 @@ fn findplay(database_connection: DatabaseConnection, find_play_data: Json<data::
             and users_games_keys.user_id = users.user_id;",
         &[&find_play_data.username, &find_play_data.game_string_id]
     )?;
+    if results.len() > 0 { Ok(()) } else { Err("Not enough results 2") }?;
     let user_game_key_hash : String = results.get(0).get(0);
     if verify(&find_play_data.user_game_key, &user_game_key_hash)? {
         // Do nothing
@@ -586,6 +590,7 @@ fn findplay(database_connection: DatabaseConnection, find_play_data: Json<data::
             returning play_id;",
             &[&game_id, &play_key_hash]
         )?;
+        if results.len() > 0 { Ok(()) } else { Err("Not enough results 3") }?;
         let play_id: PlayId = results_2.get(0).get(0);
         // Add users to play, and remove them from waiting pool
         let mut usernames = Vec::new();
@@ -618,7 +623,7 @@ fn findplay(database_connection: DatabaseConnection, find_play_data: Json<data::
 }
 
 #[post("/endplay", data = "<end_play_data>")]
-fn endplay(database_connection: DatabaseConnection, end_play_data: Json<data::EndPlay>) -> Result<Json<response::EndPlay>> {
+fn endplay(database_connection: DatabaseConnection, end_play_data: Json<data::EndPlay>) -> /*Result<Json<response::EndPlay>>*/Result<Json<Response>> {
     // Verify that we are authorized to end the play
     // The key needs to be validated against the hash stored in the database
     let query_results = database_connection.query(
@@ -711,10 +716,11 @@ fn endplay(database_connection: DatabaseConnection, end_play_data: Json<data::En
             if username_1 != username_2 {
                 let glicko2_rating_2 = *old_glicko2_ratings.get(username_2).unwrap();
                 let rank_diff = user_data_1.rank - user_data_2.rank;
+                
                 let game_result = if rank_diff < - MARGIN_FOR_WIN { // username_1 win
                     GameResult::win(glicko2_rating_2)
                 } else if rank_diff > MARGIN_FOR_WIN { // username_1 lose
-                    GameResult::win(glicko2_rating_2)
+                    GameResult::loss(glicko2_rating_2)
                 } else { // draw
                     GameResult::draw(glicko2_rating_2)
                 };
@@ -782,11 +788,13 @@ fn endplay(database_connection: DatabaseConnection, end_play_data: Json<data::En
         &[&end_play_data.play_id]
     )?;
     // Send response with old and new ratings for each user
-    Ok(Json(response::EndPlay {
-        game_id: game_id,
-        play_id: end_play_data.play_id,
-        ratings: ratings
-    }))
+    Ok(Json( Response::new(response::Code::EndPlayOk, Some(ResponseData::endplay(
+        data::EndPlayOk {
+            game_id: game_id,
+            play_id: end_play_data.play_id,
+            ratings: ratings
+        }
+    )))))
 }
 
 #[catch(404)]

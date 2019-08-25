@@ -6,25 +6,20 @@ use crate::types::*;
 use crate::rating::*;
 use crate::data;
 
-#[derive(Serialize, Deserialize)]
-pub struct EndPlay {
-    pub game_id: GameId,
-    pub play_id: PlayId,
-    pub ratings: HashMap<String, Rating>
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum Code {
     PlayFound,
     WaitingForOpponent,
-    InvalidUserGameKey
+    InvalidUserGameKey,
+    EndPlayOk
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ResponseData {
     play(Play),
-    findplay(data::FindPlay)
+    findplay(data::FindPlay),
+    endplay(data::EndPlayOk)
 }
 
 pub struct CodeDataPair {
@@ -43,13 +38,21 @@ pub struct Response {
 impl Response {
     pub fn new(code: Code, data: Option<ResponseData>) -> Response {
         let status = 200;
-        match (code, data.clone()) {
+        match (code, data.as_ref()) {
             (Code::PlayFound, Some(ResponseData::play(_))) => {
                 Response {
                     status: status,
                     code: "play_found".to_owned(),
                     data: data,
                     message: "Play found".to_owned()
+                }
+            },
+            (Code::EndPlayOk, Some(ResponseData::endplay(_))) => {
+                Response {
+                    status: status,
+                    code: "end_play".to_owned(),
+                    data: data,
+                    message: "End play".to_owned()
                 }
             },
             (Code::WaitingForOpponent, None) => {
@@ -74,15 +77,15 @@ impl Response {
         }
     }
 
-    pub fn code(&self) -> String {
+    /*pub fn code(&self) -> String {
         self.code.clone()
-    }
+    }*/
 
-    pub fn data(&self) -> Option<ResponseData> {
+    /*pub fn data(&self) -> Option<ResponseData> {
         self.data.clone()
-    }
+    }*/
 
-    pub fn message(&self) -> String {
+    /*pub fn message(&self) -> String {
         self.message.clone()
-    }
+    }*/
 }

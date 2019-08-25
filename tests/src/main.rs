@@ -3,6 +3,7 @@ mod api_request_data;
 mod play;
 mod types;
 mod user;
+mod api;
 
 use api_response::*;
 use play::*;
@@ -311,9 +312,9 @@ fn test_012() {
 #[test]
 //#[ignore]
 fn test_013_game_cycle_from_server() {
-    let mock_key = "123456";
     let output = run_command_verbose(PSQL_COMMAND, &[POSTGRESQL_URL, "-f", "../database/insert-mock-user-game-keys.sql"]).unwrap();
     assert!(output.status.success(), true);
+    let mock_key = "123456";
     let game: Game = reqwest::get(&api_url("/games/luck")).unwrap().json().unwrap();
     println!("game: {:#?}", game);
     let game_designer: UserWithJwt = Client::new()
@@ -382,7 +383,7 @@ fn test_013_game_cycle_from_server() {
             rank: 2.5,
             user_game_key: mock_key.to_owned()
         });
-        let endplay: EndPlay = Client::new()
+        let endplay: api::response::Response = Client::new()
             .post(&api_url("/endplay"))
             .json(&api_request_data::EndPlay {
                 play_key: play.key,
@@ -391,12 +392,16 @@ fn test_013_game_cycle_from_server() {
             })
             .send().unwrap().json().unwrap();
         println!("endplay: {:#?}", endplay);
+        let endplay_data = match endplay.data.unwrap() {
+            api::response::Data::endplay(v) => v,
+            _ => panic!("Wrong response")
+        };
         if i == 0 {
-            assert!(endplay.ratings.get("user_1").unwrap().old_rating.value == endplay.ratings.get("user_2").unwrap().old_rating.value);
-            assert!(endplay.ratings.get("user_1").unwrap().old_rating.value == endplay.ratings.get("user_3").unwrap().old_rating.value);
+            assert!(endplay_data.ratings.get("user_1").unwrap().old_rating.value == endplay_data.ratings.get("user_2").unwrap().old_rating.value);
+            assert!(endplay_data.ratings.get("user_1").unwrap().old_rating.value == endplay_data.ratings.get("user_3").unwrap().old_rating.value);
         }
-        assert!(endplay.ratings.get("user_2").unwrap().new_rating.value > endplay.ratings.get("user_1").unwrap().new_rating.value);
-        assert!(endplay.ratings.get("user_1").unwrap().new_rating.value == endplay.ratings.get("user_3").unwrap().new_rating.value);
+        assert!(endplay_data.ratings.get("user_2").unwrap().new_rating.value > endplay_data.ratings.get("user_1").unwrap().new_rating.value);
+        assert!(endplay_data.ratings.get("user_1").unwrap().new_rating.value == endplay_data.ratings.get("user_3").unwrap().new_rating.value);
     }
 }
 
@@ -406,7 +411,6 @@ fn test_014_game_cycle_from_clients() {
     // Mock data
     let output = run_command_verbose(PSQL_COMMAND, &[POSTGRESQL_URL, "-f", "../database/set-mock-game-keys.sql"]).unwrap();
     assert!(output.status.success(), true);
-    let mock_key = "123456";
     // Users
     let user_1: UserWithJwt = Client::new()
         .post(&api_url("/login"))
@@ -429,12 +433,35 @@ fn test_014_game_cycle_from_clients() {
     // Game
     let game: Game = reqwest::get(&api_url("/games/luck")).unwrap().json().unwrap();
     println!("game: {:#?}", game);
-    
+    // Keys
+    let usergame_with_key_1: GameWithKey = Client::new()
+        .post(&api_url("/users/user_1/games/luck/key"))
+        .header("Authorization", user_1.jwt.clone())
+        .send().unwrap()
+        .json().unwrap();
+    let key_1 = usergame_with_key_1.key.clone();
+    println!("usergame_with_key_1: {:#?}", usergame_with_key_1);
+    let usergame_with_key_2: GameWithKey = Client::new()
+        .post(&api_url("/users/user_2/games/luck/key"))
+        .header("Authorization", user_2.jwt.clone())
+        .send().unwrap()
+        .json().unwrap();
+    let key_2 = usergame_with_key_2.key.clone();
+    println!("usergame_with_key_2: {:#?}", usergame_with_key_2);
+    let usergame_with_key_3: GameWithKey = Client::new()
+        .post(&api_url("/users/user_3/games/luck/key"))
+        .header("Authorization", user_3.jwt.clone())
+        .send().unwrap()
+        .json().unwrap();
+    let key_3 = usergame_with_key_3.key.clone();
+    println!("usergame_with_key_3: {:#?}", usergame_with_key_3);
     // Launch game
     struct WsClient {sender: Sender, username: String, user_game_key: String}
     impl Handler for WsClient {
         fn on_open(&mut self, _: Handshake) -> Result<(), ws::Error> {
-            let req = format!("{}{}{}{}{}", r#"{"code":"findplay", "data": { "findplay" : {"username":""#, self.username, r#"", "user_game_key":""#, self.user_game_key, r#""}}}"#);
+            let req = format!(
+                "{}{}{}{}{}",
+                r#"{"code":"findplay", "data": { "findplay" : {"username":""#, self.username, r#"", "user_game_key":""#, self.user_game_key, r#""}}}"#);
             self.sender.send(req)
         }
         fn on_message(&mut self, msg: Message) -> Result<(), ws::Error> {
@@ -445,17 +472,14 @@ fn test_014_game_cycle_from_clients() {
     let websocket_url_1 = game.websocket_url.clone();
     let websocket_url_2 = game.websocket_url.clone();
     let websocket_url_3 = game.websocket_url.clone();
-    let mock_key_1 = mock_key.clone();
-    let mock_key_2 = mock_key.clone();
-    let mock_key_3 = mock_key.clone();
     let thread_1 = thread::spawn(move || {
-        ws::connect(websocket_url_1, |sender| WsClient {sender: sender, username: "user_1".to_owned(), user_game_key: mock_key_1.to_owned()} ).unwrap();
+        ws::connect(websocket_url_1, |sender| WsClient {sender: sender, username: "user_1".to_owned(), user_game_key: key_1.to_owned()} ).unwrap();
     });
     let thread_2 = thread::spawn(move || {
-        ws::connect(websocket_url_2, |sender| WsClient {sender: sender, username: "user_2".to_owned(), user_game_key: mock_key_2.to_owned()} ).unwrap();
+        ws::connect(websocket_url_2, |sender| WsClient {sender: sender, username: "user_2".to_owned(), user_game_key: key_2.to_owned()} ).unwrap();
     });
     let thread_3 = thread::spawn(move || {
-        ws::connect(websocket_url_3, |sender| WsClient {sender: sender, username: "user_3".to_owned(), user_game_key: mock_key_3.to_owned()} ).unwrap();
+        ws::connect(websocket_url_3, |sender| WsClient {sender: sender, username: "user_3".to_owned(), user_game_key: key_3.to_owned()} ).unwrap();
     });
     let result_1 = thread_1.join();
     let result_2 = thread_2.join();

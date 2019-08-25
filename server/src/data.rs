@@ -1,4 +1,5 @@
 use crate::types::*;
+use crate::rating;
 
 use std::collections::HashMap;
 
@@ -15,6 +16,13 @@ pub struct EndPlay {
     pub play_key: Key,
     pub play_id: PlayId,
     pub users_data: HashMap<Username, EndPlayUserData>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct EndPlayOk {
+    pub game_id: GameId,
+    pub play_id: PlayId,
+    pub ratings: HashMap<String, rating::Rating>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

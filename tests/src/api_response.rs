@@ -11,7 +11,8 @@ pub enum Code {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ResponseData {
     //usernames(Vec<String>),
-    play(Play)
+    play(Play),
+    enplay()
 }
 
 pub struct CodeDataPair {

@@ -1,37 +1,38 @@
-use std::collections::HashMap;
-use std::sync::{Mutex, Arc};
-use ws::{Sender, Message, Handshake, CloseCode};
-use serde_json;
-use serde_derive::{Serialize, Deserialize};
-use reqwest::{Client};
-use std::env;
-
 mod client_error;
 mod api;
 mod client;
 mod types;
+mod error;
+mod game;
+
+use game::*;
+use error::*;
 use client_error::*;
 use client::response::*;
 use types::*;
 
-#[macro_use] extern crate failure;
+use std::rc::Rc;
+use std::cell::RefCell;
+use std::env;
+use std::sync::mpsc;
+use std::collections::HashMap;
+//use std::sync::{Mutex, Arc};
+use std::thread;
 
+use ws::{Sender, Message, Handshake, CloseCode};
+use serde_json;
+use serde_derive::{Serialize, Deserialize};
+use reqwest::{Client};
 use failure::Error;
-#[derive(Debug, Fail)]
-enum MyError {
-    #[fail(display = "invalid play")]
-    InvalidPlay {
-    },
-    #[fail(display = "unkknown api code : {}", code)]
-    UnknownApiCode {
-        code: String
-    }
-}
 
+#[macro_use] extern crate failure;
 
 struct Handler<'a> {
     sender: Sender,
-    senders: Arc<Mutex<HashMap<Username, Sender>>>,
+    //senders: Arc<Mutex<HashMap<Username, Sender>>>,
+    senders: Rc<RefCell<HashMap<Username, Sender>>>,
+    user_game_keys: Rc<RefCell<HashMap<Username, Key>>>,
+    transmitters: Rc<RefCell<HashMap<Username, mpsc::Sender<GameCommand>>>>,
     game_key: String,
     game_string_id: String,
     api_root_url: &'a str,
@@ -63,12 +64,19 @@ struct WaitingForOpponent {
 }
 
 impl Handler<'_> {
-    fn findplay(&self, client_data: client::data::FindPlay) -> Result<CodeDataPair, Error> {
+
+    fn register_user(&self, username: Username, user_game_key: Key) -> Result<(), Error>{
+        self.senders.borrow_mut().insert(username.clone(), self.sender.clone());
+        self.user_game_keys.borrow_mut().insert(username.clone(), user_game_key);
+        Ok(())
+    }
+
+    fn findplay(&self, client_data: client::data::FindPlay) -> Result<Response, Error> {
         let api_data = api::data::FindPlay {
-            username: client_data.username,
+            username: client_data.username.clone(),
             game_string_id: self.game_string_id.clone(),
             game_key: self.game_key.clone(),
-            user_game_key: client_data.user_game_key
+            user_game_key: client_data.user_game_key.clone()
         };
         let api_response: api::response::Response = Client::new()
             .post(&self.api_url("/findplay"))
@@ -76,54 +84,56 @@ impl Handler<'_> {
             .send()?.json()?;
         match api_response.code.as_ref() {
             "play_found" => {
-                let play = match api_response.data.unwrap() {
-                    api::data::Data::play(play) => Ok(play),
-                    _ => Err(MyError::InvalidPlay{}) 
+                self.register_user(client_data.username, client_data.user_game_key)?;
+                let play_data = match api_response.data.unwrap() {
+                    api::response::Data::play(data) => Ok(data),
+                    _ => Err(MyError::InvalidPlay{})
                 }?;
-                let usernames = play.usernames;
-                
-                /*for username in usernames {
-                    Handler::send_response(
-                        self.senders.get(username),
-                        response::Code::PlayFound,
-                        Some(ResponseData::usernames( usernames )));
-                }*/
-                
-                // TODO : launch game thread
-                
-                Ok (CodeDataPair {
-                    code: client::response::Code::PlayFound,
-                    data: Some(ResponseData::usernames( usernames ))
-                } )
+                let mut users_data = Vec::new();
+                for username in play_data.usernames.iter() {
+                    let (tx, rx) = mpsc::channel();
+                    self.transmitters.borrow_mut().insert(username.clone(), tx);
+                    users_data.push(UserData {
+                        receiver: rx,
+                        sender: self.senders.borrow_mut().get(&username.clone()).unwrap().clone(),
+                        username: username.clone(),
+                        user_game_key: self.user_game_keys.borrow_mut().get(&username.clone()).unwrap().clone()
+                    });
+                }
+                let api_root_url : String = self.api_root_url.to_string().clone();
+                let play_key = play_data.key.clone();
+                let play_id = play_data.play_id.clone();
+                thread::spawn(move || {
+                    let game = Game {
+                        users_data: users_data,
+                        api_root_url: api_root_url,
+                        play_key: play_key,
+                        play_id: play_id,
+                    };
+                    game.start();
+                });
+                Ok(Response::new(
+                    client::response::Code::PlayFound,
+                    Some(ResponseData::usernames( play_data.usernames.clone() ))
+                )?)
             },
             "waiting_for_opponent" => {
-                Ok (CodeDataPair {
-                    code: client::response::Code::WaitingForOpponent,
-                    data: None
-                } )
+                self.register_user(client_data.username, client_data.user_game_key)?;
+                Ok(Response::new(
+                    client::response::Code::WaitingForOpponent,
+                    None
+                )?)
             },
             "invalid_user_game_key" => {
-                Ok (CodeDataPair {
-                    code: client::response::Code::InvalidUserGameKey,
-                    data: None
-                } )
+                Ok(Response::new(
+                    client::response::Code::InvalidUserGameKey,
+                    None
+                )?)
             },
             any => {
                 Err(MyError::UnknownApiCode{code:any.to_owned()})?
             }
         }
-    }
-
-    fn send_response(sender: & Sender, response_code: client::response::Code, response_data: Option<ResponseData>) -> Result<(), ws::Error> {
-        let response = Response::new(response_code, response_data);
-        let json_response = JsonResponse {
-            status: 200,
-            code: &response.code(),
-            message: &response.message(),
-            data: response.data()
-        };
-        let text = serde_json::to_string(&json_response).unwrap();
-        sender.send(Message::text(text))
     }
 
     fn send_client_error(&self, error_code: ClientErrorCode) -> Result<(), ws::Error> {
@@ -176,8 +186,8 @@ impl ws::Handler for Handler<'_> {
                 match (request.code.as_ref(), request.data) {
                     ("findplay",  client::data::Data::findplay(data) ) => {
                         match self.findplay(data) {
-                            Ok(code_data_pair) => {
-                                Handler::send_response(&self.sender, code_data_pair.code, code_data_pair.data)
+                            Ok(response) => {
+                                Response::send(&self.sender, response)
                             },
                             Err(error) => {
                                 self.send_internal_error(error.to_string())
@@ -223,7 +233,10 @@ fn env_var_or_default(key: &str, default_value: &str) -> String {
 }
 
 fn main() -> Result<(), ws::Error> {
-    let senders = Arc::new(Mutex::new(HashMap::new()));
+    //let senders = Arc::new(Mutex::new(HashMap::new()));
+    let senders = Rc::new(RefCell::new(HashMap::new()));
+    let transmitters = Rc::new(RefCell::new(HashMap::new()));
+    let user_game_keys = Rc::new(RefCell::new(HashMap::new()));
     let url = env_var_or_default("GAME_LUCK_URL", "0.0.0.0:8080");
     let api_root_url = env_var_or_default("API_ROOT_URL", "http://localhost:8000");
     let game_key = env_var_or_default("GAME_LUCK_KEY", "$2y$12$WMofxOYcosOVtiTI4TXjN.qC08VJk3bURb2gDRGO3kr1ZZMPUZxv6");
@@ -231,7 +244,9 @@ fn main() -> Result<(), ws::Error> {
     ws::listen(url, |sender| {
         Handler {
             sender: sender,
-            senders: Arc::clone(&senders),
+            senders: Rc::clone(&senders),
+            user_game_keys: Rc::clone(&user_game_keys),
+            transmitters: Rc::clone(&transmitters),
             game_key: game_key.to_owned(),
             game_string_id: game_string_id.to_owned(),
             api_root_url: &api_root_url
