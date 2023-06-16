@@ -1,0 +1,10 @@
+    Finished bench [optimized] target(s) in 0.00s
+     Running unittests src/main.rs (target/release/deps/simple_market-ab9e34edbda62585)
+
+running 3 tests
+test bench::bench_1 ... bench:         266 ns/iter (+/- 2)
+test bench::bench_2 ... bench:     597,695 ns/iter (+/- 18,060)
+test bench::bench_3 ... bench:     590,183 ns/iter (+/- 12,696)
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 3 measured; 0 filtered out; finished in 1.28s
+
