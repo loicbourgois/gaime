@@ -1,0 +1,4 @@
+simple-market/target
+.DS_Store
+simple-market/latest/data.csv
+**.csv

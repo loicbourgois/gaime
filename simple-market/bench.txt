@@ -1,0 +1,32 @@
+   Compiling simple-market v0.1.0 (/Users/loicbourgois/github.com/loicbourgois/gaime/simple-market)
+error[E0412]: cannot find type `Neurons` in this scope
+  --> src/bench.rs:56:22
+   |
+56 |     let mut neurons: Neurons = vec![];
+   |                      ^^^^^^^ not found in this scope
+   |
+help: consider importing this type alias
+   |
+2  + use crate::Neurons;
+   |
+
+error[E0422]: cannot find struct, variant or union type `NeuralNet` in this scope
+  --> src/bench.rs:71:22
+   |
+71 |     let neural_net = NeuralNet {
+   |                      ^^^^^^^^^ not found in this scope
+   |
+help: consider importing this struct
+   |
+2  + use crate::NeuralNet;
+   |
+
+error[E0425]: cannot find value `rng` in this scope
+  --> src/bench.rs:80:60
+   |
+80 |         compute(&neural_net.neurons, &neural_net.values_b, rng, &ins);
+   |                                                            ^^^ not found in this scope
+
+Some errors have detailed explanations: E0412, E0422, E0425.
+For more information about an error, try `rustc --explain E0412`.
+error: could not compile `simple-market` (bin "simple-market" test) due to 3 previous errors

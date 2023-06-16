@@ -1,0 +1,46 @@
+flowchart LR
+subgraph input
+i0(player)
+i1(m.wood)
+i2(m.rice)
+i3(m.land)
+i4(p0.rice)
+i5(p0.wood)
+i6(p0.land)
+i7(p0.farm)
+i8(p0.forest)
+i9(p0.gold)
+i10(p0.debt)
+end
+subgraph net
+i0 -.-> n0 
+n0(n0 : in)
+i1 -.-> n1 
+n1(n1 : in)
+i3 -.-> n3 
+n3(n3 : in)
+i6 -.-> n6 
+n6(n6 : in)
+i7 -.-> n7 
+n7(n7 : in)
+i8 -.-> n8 
+n8(n8 : in)
+i9 -.-> n9 
+n9(n9 : in)
+n11(n11 : const : 0.349)
+n9 -.-> n12 
+n7 -.-> n12 
+n0 -.-> n12 
+n11 -.-> n12 
+n3 -.-> n12 
+n1 -.-> n12 
+n0 -.-> n12 
+n6 -.-> n12 
+n3 -.-> n12 
+n7 -.-> n12 
+n8 -.-> n12 
+n12 -.-> n12 
+n11 -.-> n12 
+n12(n12 : weight : 0.882)
+end
+n11 -.-> decision

@@ -1,0 +1,80 @@
+flowchart LR
+subgraph input
+i0(player)
+i1(m.wood)
+i2(m.rice)
+i3(m.land)
+i4(p0.rice)
+i5(p0.wood)
+i6(p0.land)
+i7(p0.farm)
+i8(p0.forest)
+i9(p0.gold)
+i10(p0.debt)
+i11(p1.rice)
+i12(p1.wood)
+i13(p1.land)
+i14(p1.farm)
+i15(p1.forest)
+i16(p1.gold)
+i17(p1.debt)
+i18(p2.rice)
+i19(p2.wood)
+i20(p2.land)
+i21(p2.farm)
+i22(p2.forest)
+i23(p2.gold)
+i24(p2.debt)
+i25(p3.rice)
+i26(p3.wood)
+i27(p3.land)
+i28(p3.farm)
+i29(p3.forest)
+i30(p3.gold)
+i31(p3.debt)
+i32(p4.rice)
+i33(p4.wood)
+i34(p4.land)
+i35(p4.farm)
+i36(p4.forest)
+i37(p4.gold)
+i38(p4.debt)
+end
+subgraph net
+i1 -.-> n1 
+n1(n1 : in)
+i11 -.-> n11 
+n11(n11 : in)
+i12 -.-> n12 
+n12(n12 : in)
+n39(n39 : out)
+n44 -.-> n40 
+n40 -.-> n40 
+n40(n40 : out)
+n41(n41 : out)
+n42(n42 : out)
+n12 -.-> n43 
+n43(n43 : out)
+n47 -.-> n44 
+n11 -.-> n44 
+n44 -.-> n44 
+n40 -.-> n44 
+n44(n44 : out)
+n45(n45 : out)
+n40 -.-> n46 
+n46(n46 : out)
+n1 -.-> n47 
+n47(n47 : out)
+n46 -.-> n48 
+n48(n48 : out)
+end
+n39 -.-> decision
+n40 -.-> decision
+n41 -.-> decision
+n42 -.-> decision
+n43 -.-> decision
+n44 -.-> decision
+n45 -.-> decision
+n46 -.-> decision
+n47 -.-> decision
+n48 -.-> decision

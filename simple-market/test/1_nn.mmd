@@ -1,0 +1,62 @@
+flowchart LR
+subgraph input
+i0(player)
+i1(m.wood)
+i2(m.rice)
+i3(m.land)
+i4(p0.rice)
+i5(p0.wood)
+i6(p0.land)
+i7(p0.farm)
+i8(p0.forest)
+i9(p0.gold)
+i10(p0.debt)
+end
+subgraph net
+i0 -.-> n0 
+n0(n0 : in)
+i1 -.-> n1 
+n1(n1 : in)
+i2 -.-> n2 
+n2(n2 : in)
+i3 -.-> n3 
+n3(n3 : in)
+i4 -.-> n4 
+n4(n4 : in)
+i5 -.-> n5 
+n5(n5 : in)
+i6 -.-> n6 
+n6(n6 : in)
+i7 -.-> n7 
+n7(n7 : in)
+i8 -.-> n8 
+n8(n8 : in)
+i9 -.-> n9 
+n9(n9 : in)
+i10 -.-> n10 
+n10(n10 : in)
+n11(n11 : out)
+n12(n12 : out)
+n13(n13 : out)
+n14(n14 : out)
+n15(n15 : out)
+n16(n16 : out)
+n7 -.-> n17 
+n17(n17 : out)
+n18(n18 : out)
+n19(n19 : out)
+n5 -.-> n20 
+n20(n20 : out)
+n21(n21 : hardtanh)
+n22(n22 : decision)
+end
+n11 -.-> decision
+n12 -.-> decision
+n13 -.-> decision
+n14 -.-> decision
+n15 -.-> decision
+n16 -.-> decision
+n17 -.-> decision
+n18 -.-> decision
+n19 -.-> decision
+n20 -.-> decision

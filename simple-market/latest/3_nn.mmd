@@ -1,0 +1,186 @@
+flowchart LR
+subgraph input
+i0(player)
+i1(m.wood)
+i2(m.rice)
+i3(m.land)
+i4(p0.rice)
+i5(p0.wood)
+i6(p0.land)
+i7(p0.farm)
+i8(p0.forest)
+i9(p0.gold)
+i10(p0.debt)
+i11(p1.rice)
+i12(p1.wood)
+i13(p1.land)
+i14(p1.farm)
+i15(p1.forest)
+i16(p1.gold)
+i17(p1.debt)
+i18(p2.rice)
+i19(p2.wood)
+i20(p2.land)
+i21(p2.farm)
+i22(p2.forest)
+i23(p2.gold)
+i24(p2.debt)
+i25(p3.rice)
+i26(p3.wood)
+i27(p3.land)
+i28(p3.farm)
+i29(p3.forest)
+i30(p3.gold)
+i31(p3.debt)
+i32(p4.rice)
+i33(p4.wood)
+i34(p4.land)
+i35(p4.farm)
+i36(p4.forest)
+i37(p4.gold)
+i38(p4.debt)
+end
+subgraph net
+i0 -.-> n0 
+n0(n0 : in)
+i1 -.-> n1 
+n1(n1 : in)
+i2 -.-> n2 
+n2(n2 : in)
+i3 -.-> n3 
+n3(n3 : in)
+i4 -.-> n4 
+n4(n4 : in)
+i5 -.-> n5 
+n5(n5 : in)
+i6 -.-> n6 
+n6(n6 : in)
+i7 -.-> n7 
+n7(n7 : in)
+i8 -.-> n8 
+n8(n8 : in)
+i9 -.-> n9 
+n9(n9 : in)
+i10 -.-> n10 
+n10(n10 : in)
+i11 -.-> n11 
+n11(n11 : in)
+i12 -.-> n12 
+n12(n12 : in)
+i13 -.-> n13 
+n13(n13 : in)
+i14 -.-> n14 
+n14(n14 : in)
+i15 -.-> n15 
+n15(n15 : in)
+i16 -.-> n16 
+n16(n16 : in)
+i17 -.-> n17 
+n17(n17 : in)
+i18 -.-> n18 
+n18(n18 : in)
+i19 -.-> n19 
+n19(n19 : in)
+i20 -.-> n20 
+n20(n20 : in)
+i21 -.-> n21 
+n21(n21 : in)
+i22 -.-> n22 
+n22(n22 : in)
+i23 -.-> n23 
+n23(n23 : in)
+i24 -.-> n24 
+n24(n24 : in)
+i25 -.-> n25 
+n25(n25 : in)
+i26 -.-> n26 
+n26(n26 : in)
+i27 -.-> n27 
+n27(n27 : in)
+i28 -.-> n28 
+n28(n28 : in)
+i29 -.-> n29 
+n29(n29 : in)
+i30 -.-> n30 
+n30(n30 : in)
+i31 -.-> n31 
+n31(n31 : in)
+i32 -.-> n32 
+n32(n32 : in)
+i33 -.-> n33 
+n33(n33 : in)
+i34 -.-> n34 
+n34(n34 : in)
+i35 -.-> n35 
+n35(n35 : in)
+i36 -.-> n36 
+n36(n36 : in)
+i37 -.-> n37 
+n37(n37 : in)
+i38 -.-> n38 
+n38(n38 : in)
+n48 -.-> n39 
+n39(n39 : out)
+n46 -.-> n40 
+n41 -.-> n40 
+n40(n40 : out)
+n21 -.-> n41 
+n48 -.-> n41 
+n41(n41 : out)
+n32 -.-> n42 
+n1 -.-> n42 
+n34 -.-> n42 
+n42(n42 : out)
+n19 -.-> n43 
+n38 -.-> n43 
+n12 -.-> n43 
+n14 -.-> n43 
+n43(n43 : out)
+n40 -.-> n44 
+n46 -.-> n44 
+n44(n44 : out)
+n35 -.-> n45 
+n45(n45 : out)
+n35 -.-> n46 
+n40 -.-> n46 
+n27 -.-> n46 
+n46(n46 : out)
+n7 -.-> n47 
+n30 -.-> n47 
+n48 -.-> n47 
+n47(n47 : out)
+n17 -.-> n48 
+n27 -.-> n48 
+n51 -.-> n48 
+n12 -.-> n48 
+n7 -.-> n48 
+n43 -.-> n48 
+n48(n48 : out)
+n48 -.-> n49 
+n49 -.-> n49 
+n49(n49 : decision)
+n38 -.-> n50 
+n50(n50 : hardtanh)
+n46 -.-> n51 
+n51(n51 : weight : 0.725)
+n2 -.-> n52 
+n17 -.-> n52 
+n36 -.-> n52 
+n52(n52 : decision)
+n27 -.-> n53 
+n53(n53 : weight : 0.890)
+n54(n54 : decision)
+n55(n55 : hardtanh)
+n56(n56 : weight : -0.490)
+n57(n57 : decision)
+end
+n39 -.-> decision
+n40 -.-> decision
+n41 -.-> decision
+n42 -.-> decision
+n43 -.-> decision
+n44 -.-> decision
+n45 -.-> decision
+n46 -.-> decision
+n47 -.-> decision
+n48 -.-> decision

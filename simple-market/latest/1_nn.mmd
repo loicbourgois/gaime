@@ -1,0 +1,125 @@
+flowchart LR
+subgraph input
+i0(player)
+i1(m.wood)
+i2(m.rice)
+i3(m.land)
+i4(p0.rice)
+i5(p0.wood)
+i6(p0.land)
+i7(p0.farm)
+i8(p0.forest)
+i9(p0.gold)
+i10(p0.debt)
+i11(p1.rice)
+i12(p1.wood)
+i13(p1.land)
+i14(p1.farm)
+i15(p1.forest)
+i16(p1.gold)
+i17(p1.debt)
+end
+subgraph net
+i0 -.-> n0 
+n0(n0 : in)
+i1 -.-> n1 
+n1(n1 : in)
+i2 -.-> n2 
+n2(n2 : in)
+i3 -.-> n3 
+n3(n3 : in)
+i4 -.-> n4 
+n4(n4 : in)
+i5 -.-> n5 
+n5(n5 : in)
+i6 -.-> n6 
+n6(n6 : in)
+i7 -.-> n7 
+n7(n7 : in)
+i8 -.-> n8 
+n8(n8 : in)
+i9 -.-> n9 
+n9(n9 : in)
+i10 -.-> n10 
+n10(n10 : in)
+i11 -.-> n11 
+n11(n11 : in)
+i12 -.-> n12 
+n12(n12 : in)
+i13 -.-> n13 
+n13(n13 : in)
+i14 -.-> n14 
+n14(n14 : in)
+i15 -.-> n15 
+n15(n15 : in)
+i16 -.-> n16 
+n16(n16 : in)
+i17 -.-> n17 
+n17(n17 : in)
+n18(n18 : out)
+n21 -.-> n19 
+n19(n19 : out)
+n20(n20 : out)
+n19 -.-> n21 
+n39 -.-> n21 
+n21 -.-> n21 
+n21(n21 : out)
+n22(n22 : out)
+n1 -.-> n23 
+n6 -.-> n23 
+n19 -.-> n23 
+n9 -.-> n23 
+n17 -.-> n23 
+n23(n23 : out)
+n26 -.-> n24 
+n26 -.-> n24 
+n1 -.-> n24 
+n26 -.-> n24 
+n24(n24 : out)
+n17 -.-> n25 
+n25 -.-> n25 
+n25(n25 : out)
+n12 -.-> n26 
+n29 -.-> n26 
+n26(n26 : out)
+n3 -.-> n27 
+n27(n27 : out)
+n12 -.-> n28 
+n28(n28 : decision)
+n21 -.-> n29 
+n9 -.-> n29 
+n29(n29 : hardtanh)
+n21 -.-> n30 
+n30(n30 : hardtanh)
+n31(n31 : decision)
+n28 -.-> n32 
+n12 -.-> n32 
+n32(n32 : decision)
+n0 -.-> n33 
+n7 -.-> n33 
+n15 -.-> n33 
+n11 -.-> n33 
+n33(n33 : decision)
+n19 -.-> n34 
+n27 -.-> n34 
+n34(n34 : decision)
+n35(n35 : weight : -0.678)
+n36(n36 : const : 0.451)
+n33 -.-> n37 
+n37(n37 : decision)
+n38(n38 : decision)
+n39(n39 : const : 0.086)
+n40(n40 : const : 0.514)
+n41(n41 : decision)
+n42(n42 : decision)
+end
+n18 -.-> decision
+n19 -.-> decision
+n20 -.-> decision
+n21 -.-> decision
+n22 -.-> decision
+n23 -.-> decision
+n24 -.-> decision
+n25 -.-> decision
+n26 -.-> decision
+n27 -.-> decision
