@@ -1,5 +1,13 @@
 # Gaime
 
-Clean up, build, and run docker containers for development
+## Simple market
+```sh
 
-`clear; docker image prune -f; docker-compose -f docker-compose.dev.yml up --build --remove-orphans;`
+```
+
+
+## Misc
+Clean up, build, and run docker containers for development
+```sh
+clear; docker image prune -f; docker-compose -f docker-compose.dev.yml up --build --remove-orphans;
+```
