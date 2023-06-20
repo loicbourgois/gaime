@@ -166,7 +166,7 @@ pub fn get_actions() -> Vec<fn(&mut Market, &mut Player) -> bool> {
 pub fn get_actions_str() -> Vec<&'static str> {
     vec![
         "take_loan   +10 gold  +10 debt",
-        "sell_wood",
+        "sell_wood   ",
         "buy_rice",
         "sell_rice",
         "build_farm",
