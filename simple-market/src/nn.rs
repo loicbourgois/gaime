@@ -92,13 +92,13 @@ impl DecisionMaker for NeuralNet {
     }
 }
 
-impl NeuralNet {
-    pub fn reset(&mut self) {
-        self.values_a = vec![0.0; self.values_a.len()];
-        self.values_b = vec![0.0; self.values_b.len()];
-        self.step = 0;
-    }
-}
+// impl NeuralNet {
+//     pub fn reset(&mut self) {
+//         self.values_a = vec![0.0; self.values_a.len()];
+//         self.values_b = vec![0.0; self.values_b.len()];
+//         self.step = 0;
+//     }
+// }
 
 pub fn dna_to_neural_net(dna: &[u8], c: &Config) -> NeuralNet {
     let mut neurons: Neurons = vec![];
@@ -117,7 +117,7 @@ pub fn dna_to_neural_net(dna: &[u8], c: &Config) -> NeuralNet {
         values_a.push(0.0);
         values_b.push(0.0);
     }
-    for i in 0..c.outs_len {
+    for _ in 0..c.outs_len {
         neurons.push(Neuron::Output(NeuroOutput { sids: vec![] }));
         values_a.push(0.0);
         values_b.push(0.0);

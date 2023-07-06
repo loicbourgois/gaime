@@ -6,6 +6,7 @@ pub fn write_mermaid(path: &str, neural_net: &NeuralNet, player_count: usize) {
     lines.push("flowchart LR".to_string());
     lines.push("subgraph input".to_string());
     let mut txts: Vec<String> = vec![
+        "turn".to_string(),
         "player".to_string(),
         "m.wood".to_string(),
         "m.rice".to_string(),

@@ -162,7 +162,7 @@ pub fn run_generation(
     let game_elapsed = game_start.elapsed();
     let elapsed = start.elapsed();
     let mut line = Vec::new();
-    line.push(format!("{}", generation));
+    line.push(format!("{generation}"));
     for clan in clans.iter() {
         let mean_score = clan.nns.iter().map(|x| x.score).sum::<f32>() / (clan.nns.len() as f32);
         line.push(format!("{mean_score}"));

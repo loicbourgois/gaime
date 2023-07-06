@@ -3,6 +3,7 @@
 ## Simple market
 ```sh
 $HOME/github.com/loicbourgois/gaime/simple-market/command/run.sh
+$HOME/github.com/loicbourgois/gaime/simple-market/command/build.sh
 ```
 
 

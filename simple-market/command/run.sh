@@ -27,8 +27,8 @@ cargo clippy -- \
     -A clippy::too_many_lines
 cargo +nightly fmt
 RUST_BACKTRACE=1 cargo run --release
-# docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 0_nn_small.mmd -o 0_nn_small.png -w 5000 -H 5000
-# docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 0_nn.mmd -o 0_nn.png -w 5000 -H 5000
-# docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 1_nn_small.mmd -o 1_nn_small.png -w 5000 -H 5000
+docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 0_nn_small.mmd -o 0_nn_small.png -w 5000 -H 5000
+docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 0_nn.mmd -o 0_nn.png -w 5000 -H 5000
+docker run --rm -u `id -u`:`id -g` -v $HOME/github.com/loicbourgois/gaime/simple-market/latest/:/data minlag/mermaid-cli -i 1_nn_small.mmd -o 1_nn_small.png -w 5000 -H 5000
 ELAPSED_TIME=$(($SECONDS - $START_TIME))
 echo "# Duration: $ELAPSED_TIME s"
